@@ -1,0 +1,399 @@
+{
+  "clan_id": 500025989,
+  "tag": "FAME",
+  "name": "Deal with it!",
+  "members": [
+    {
+      "account_id": 502232587,
+      "account_name": "Lynx_H3",
+      "joined_at": 1584800985,
+      "role": "private"
+    },
+    {
+      "account_id": 511322304,
+      "account_name": "OMG_its_a_HULK",
+      "joined_at": 1600971306,
+      "role": "private"
+    },
+    {
+      "account_id": 508402923,
+      "account_name": "_menairo",
+      "joined_at": 1677851557,
+      "role": "combat_officer"
+    },
+    {
+      "account_id": 501948292,
+      "account_name": "PatrocIus",
+      "joined_at": 1736333525,
+      "role": "recruit"
+    },
+    {
+      "account_id": 501094149,
+      "account_name": "GoHard_ANIALLATOR",
+      "joined_at": 1732362020,
+      "role": "executive_officer"
+    },
+    {
+      "account_id": 501644119,
+      "account_name": "Alexandre12387",
+      "joined_at": 1615323499,
+      "role": "private"
+    },
+    {
+      "account_id": 568167583,
+      "account_name": "CAU_JSEM_SVITA",
+      "joined_at": 1613497340,
+      "role": "personnel_officer"
+    },
+    {
+      "account_id": 500235150,
+      "account_name": "DerZernichter",
+      "joined_at": 1729715649,
+      "role": "private"
+    },
+    {
+      "account_id": 508950927,
+      "account_name": "FieserFettsakk",
+      "joined_at": 1737976597,
+      "role": "recruit"
+    },
+    {
+      "account_id": 515369105,
+      "account_name": "krypton1te_on_Feathers",
+      "joined_at": 1732308922,
+      "role": "combat_officer"
+    },
+    {
+      "account_id": 565113216,
+      "account_name": "Logan_InReal",
+      "joined_at": 1659811639,
+      "role": "private"
+    },
+    {
+      "account_id": 504435476,
+      "account_name": "creator__",
+      "joined_at": 1560008275,
+      "role": "combat_officer"
+    },
+    {
+      "account_id": 529834649,
+      "account_name": "kajzaa",
+      "joined_at": 1629632650,
+      "role": "combat_officer"
+    },
+    {
+      "account_id": 500089624,
+      "account_name": "Schockisch",
+      "joined_at": 1655140259,
+      "role": "executive_officer"
+    },
+    {
+      "account_id": 525993092,
+      "account_name": "Etnie",
+      "joined_at": 1646808160,
+      "role": "private"
+    },
+    {
+      "account_id": 503263131,
+      "account_name": "Comrade_F3lix",
+      "joined_at": 1678295403,
+      "role": "private"
+    },
+    {
+      "account_id": 501524101,
+      "account_name": "Alphahvh",
+      "joined_at": 1594987062,
+      "role": "private"
+    },
+    {
+      "account_id": 500103840,
+      "account_name": "BPX",
+      "joined_at": 1532800576,
+      "role": "private"
+    },
+    {
+      "account_id": 512227489,
+      "account_name": "Insane_BTW",
+      "joined_at": 1678315219,
+      "role": "commander"
+    },
+    {
+      "account_id": 575680155,
+      "account_name": "Nerv0x_",
+      "joined_at": 1683226769,
+      "role": "private"
+    },
+    {
+      "account_id": 502538277,
+      "account_name": "CJIPurpleII",
+      "joined_at": 1608940416,
+      "role": "private"
+    },
+    {
+      "account_id": 522489256,
+      "account_name": "AUBURY",
+      "joined_at": 1696439412,
+      "role": "combat_officer"
+    },
+    {
+      "account_id": 501519914,
+      "account_name": "Svitman",
+      "joined_at": 1759259328,
+      "role": "recruit"
+    },
+    {
+      "account_id": 528636372,
+      "account_name": "Dom_o7",
+      "joined_at": 1683502757,
+      "role": "private"
+    },
+    {
+      "account_id": 514600621,
+      "account_name": "FAME_Commander",
+      "joined_at": 1644175238,
+      "role": "private"
+    },
+    {
+      "account_id": 500964014,
+      "account_name": "mailand",
+      "joined_at": 1546730114,
+      "role": "private"
+    },
+    {
+      "account_id": 505903407,
+      "account_name": "Mrakar",
+      "joined_at": 1620842242,
+      "role": "private"
+    },
+    {
+      "account_id": 530560434,
+      "account_name": "Benso_Abgehoben",
+      "joined_at": 1733056409,
+      "role": "private"
+    },
+    {
+      "account_id": 591904755,
+      "account_name": "Rettacs",
+      "joined_at": 1718831897,
+      "role": "private"
+    },
+    {
+      "account_id": 517211828,
+      "account_name": "___Alpha",
+      "joined_at": 1755800405,
+      "role": "recruit"
+    },
+    {
+      "account_id": 525873466,
+      "account_name": "Milti_xD",
+      "joined_at": 1616014294,
+      "role": "private"
+    },
+    {
+      "account_id": 504989115,
+      "account_name": "Vale__",
+      "joined_at": 1677968779,
+      "role": "executive_officer"
+    },
+    {
+      "account_id": 510621888,
+      "account_name": "Baron_Dom",
+      "joined_at": 1663782268,
+      "role": "junior_officer"
+    },
+    {
+      "account_id": 591256002,
+      "account_name": "KaYoZz0x_V2",
+      "joined_at": 1759780313,
+      "role": "recruit"
+    },
+    {
+      "account_id": 501709251,
+      "account_name": "Tedster_",
+      "joined_at": 1730483938,
+      "role": "private"
+    },
+    {
+      "account_id": 509822278,
+      "account_name": "shishx_the_animal",
+      "joined_at": 1591260334,
+      "role": "private"
+    },
+    {
+      "account_id": 597010377,
+      "account_name": "ShadowZS_",
+      "joined_at": 1680348099,
+      "role": "private"
+    },
+    {
+      "account_id": 501615946,
+      "account_name": "Keyhand",
+      "joined_at": 1732981858,
+      "role": "executive_officer"
+    },
+    {
+      "account_id": 517709772,
+      "account_name": "DerZernichter_KAZNA",
+      "joined_at": 1730638297,
+      "role": "private"
+    },
+    {
+      "account_id": 505970765,
+      "account_name": "SteveGER",
+      "joined_at": 1546778790,
+      "role": "private"
+    },
+    {
+      "account_id": 500964560,
+      "account_name": "Stefan_xD",
+      "joined_at": 1584044561,
+      "role": "private"
+    },
+    {
+      "account_id": 578132352,
+      "account_name": "Stelions",
+      "joined_at": 1723402441,
+      "role": "private"
+    },
+    {
+      "account_id": 581271763,
+      "account_name": "Lukas",
+      "joined_at": 1736876805,
+      "role": "recruit"
+    },
+    {
+      "account_id": 514048838,
+      "account_name": "IVORTEX__",
+      "joined_at": 1601619119,
+      "role": "private"
+    },
+    {
+      "account_id": 502347735,
+      "account_name": "HundeWurst",
+      "joined_at": 1602699455,
+      "role": "private"
+    },
+    {
+      "account_id": 556754831,
+      "account_name": "YZCKO",
+      "joined_at": 1680368723,
+      "role": "private"
+    },
+    {
+      "account_id": 518482213,
+      "account_name": "slodderv8",
+      "joined_at": 1677876596,
+      "role": "private"
+    },
+    {
+      "account_id": 594864293,
+      "account_name": "DaCupCakkeZor",
+      "joined_at": 1663672398,
+      "role": "executive_officer"
+    },
+    {
+      "account_id": 597630288,
+      "account_name": "IMeritoriousI",
+      "joined_at": 1665611982,
+      "role": "private"
+    },
+    {
+      "account_id": 524000355,
+      "account_name": "PoShYbRiD_xD",
+      "joined_at": 1519478573,
+      "role": "private"
+    },
+    {
+      "account_id": 507715302,
+      "account_name": "Xaneleon",
+      "joined_at": 1591727863,
+      "role": "private"
+    },
+    {
+      "account_id": 500566758,
+      "account_name": "The_Ich",
+      "joined_at": 1583706097,
+      "role": "private"
+    },
+    {
+      "account_id": 528065895,
+      "account_name": "_Consume",
+      "joined_at": 1730481988,
+      "role": "private"
+    },
+    {
+      "account_id": 514305404,
+      "account_name": "GohanSSJ_Ultra_Instinct",
+      "joined_at": 1694123019,
+      "role": "private"
+    },
+    {
+      "account_id": 501537643,
+      "account_name": "Yzne",
+      "joined_at": 1733601522,
+      "role": "recruit"
+    },
+    {
+      "account_id": 524629228,
+      "account_name": "lucas_N1",
+      "joined_at": 1708799739,
+      "role": "private"
+    },
+    {
+      "account_id": 530471932,
+      "account_name": "_kajzoo_",
+      "joined_at": 1627676768,
+      "role": "combat_officer"
+    },
+    {
+      "account_id": 503425775,
+      "account_name": "BK1",
+      "joined_at": 1612982506,
+      "role": "private"
+    },
+    {
+      "account_id": 507085553,
+      "account_name": "kyrahihi",
+      "joined_at": 1595135484,
+      "role": "private"
+    },
+    {
+      "account_id": 515908741,
+      "account_name": "DiNG_Rudko",
+      "joined_at": 1574278189,
+      "role": "personnel_officer"
+    },
+    {
+      "account_id": 673590696,
+      "account_name": "IDIOTxPRINCE",
+      "joined_at": 1683642623,
+      "role": "private"
+    },
+    {
+      "account_id": 525528553,
+      "account_name": "Toxic_HDL",
+      "joined_at": 1736791951,
+      "role": "combat_officer"
+    },
+    {
+      "account_id": 516911700,
+      "account_name": "Yanne_",
+      "joined_at": 1629056410,
+      "role": "private"
+    },
+    {
+      "account_id": 501153788,
+      "account_name": "thePhilX",
+      "joined_at": 1678466144,
+      "role": "private"
+    },
+    {
+      "account_id": 538754302,
+      "account_name": "Hersch_",
+      "joined_at": 1628251957,
+      "role": "personnel_officer"
+    }
+  ],
+  "snapshot_date": "2025-10-13",
+  "timestamp": 1760383272215
+}
