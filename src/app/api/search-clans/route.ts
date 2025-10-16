@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { WargamingAPI } from '@/lib/wargaming-api';
+import { getWargamingAPI, apiKeyMissingResponse } from '@/lib/api-helpers';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
-    
+
     if (!search) {
       return NextResponse.json(
         { error: 'Search parameter is required' },
@@ -13,7 +13,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const api = new WargamingAPI();
+    const api = getWargamingAPI();
+    if (!api) {
+      return apiKeyMissingResponse();
+    }
+
     const clans = await api.searchClans(search, 10);
 
     return NextResponse.json({ clans });

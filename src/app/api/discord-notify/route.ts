@@ -1,16 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PlayerExclusionAlert } from '@/types/monitoring';
 import { getMonitoringConfig } from '@/lib/monitoring-storage';
+import { getDB } from '@/lib/cloudflare';
 
 export async function POST(request: NextRequest) {
   try {
+    const db = getDB();
+    if (!db) {
+      console.error('D1 database binding not found');
+      return NextResponse.json(
+        { error: 'Database configuration error' },
+        { status: 500 }
+      );
+    }
+
     const { alert }: { alert: PlayerExclusionAlert } = await request.json();
-    const config = await getMonitoringConfig();
-    
+    const config = await getMonitoringConfig(db);
+
     if (!config.discord_webhook_url) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Discord webhook URL not configured' 
+      return NextResponse.json({
+        success: false,
+        error: 'Discord webhook URL not configured'
       });
     }
 

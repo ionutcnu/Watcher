@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { WargamingAPI } from '@/lib/wargaming-api';
+import { getWargamingAPI, apiKeyMissingResponse } from '@/lib/api-helpers';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +12,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const api = new WargamingAPI();
+    const api = getWargamingAPI();
+    if (!api) {
+      return apiKeyMissingResponse();
+    }
     const playerNames = await api.getPlayerNames(accountIds);
 
     return NextResponse.json({ 

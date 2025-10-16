@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getMonitoredClans, updateClanStatus } from '@/lib/monitoring-storage';
+import { getDB } from '@/lib/cloudflare';
 
 interface TomatoPlayerStats {
   battles: number;
@@ -131,7 +132,20 @@ export async function POST() {
         console.log('[Manual Check] Starting manual check...');
         sendProgress({ type: 'start', message: 'Starting manual check...' });
 
-        const monitoredClans = await getMonitoredClans();
+        const db = getDB();
+        if (!db) {
+          console.error('[Manual Check] D1 database binding not found');
+          sendProgress({
+            type: 'error',
+            message: 'Database configuration error',
+            success: false,
+            error: 'Database configuration error'
+          });
+          controller.close();
+          return;
+        }
+
+        const monitoredClans = await getMonitoredClans(db);
         console.log('[Manual Check] Total monitored clans:', monitoredClans.length);
 
         const enabledClans = monitoredClans.filter(clan => clan.enabled);
@@ -187,7 +201,7 @@ export async function POST() {
 
         if (!response.ok) {
           console.error(`[Manual Check] Failed to fetch for clan ${clan.tag}:`, response.status);
-          await updateClanStatus(clan.clan_id, {
+          await updateClanStatus(db, clan.clan_id, {
             status: 'error',
             last_checked: new Date().toISOString()
           });
@@ -228,10 +242,12 @@ export async function POST() {
           if (allAccountIds.size > 0) {
             console.log(`[Manual Check] Fetching names for ${allAccountIds.size} accounts`);
 
-            // Import WargamingAPI to fetch names directly
-            const { WargamingAPI } = await import('@/lib/wargaming-api');
-            const api = new WargamingAPI();
-            playerNames = await api.getPlayerNames(Array.from(allAccountIds));
+            // Import helper to fetch names directly
+            const { getWargamingAPI } = await import('@/lib/api-helpers');
+            const api = getWargamingAPI();
+            if (api) {
+              playerNames = await api.getPlayerNames(Array.from(allAccountIds));
+            }
 
             console.log(`[Manual Check] Got ${Object.keys(playerNames).length} player names`);
 
@@ -277,7 +293,7 @@ export async function POST() {
         totalLeavers += leavers.length;
 
         // Update clan status
-        await updateClanStatus(clan.clan_id, {
+        await updateClanStatus(db, clan.clan_id, {
           status: 'active',
           last_checked: new Date().toISOString(),
           last_member_count: leavers.length
@@ -299,7 +315,7 @@ export async function POST() {
 
       } catch (error) {
         console.error(`[Manual Check] Error checking clan ${clan.tag}:`, error);
-        await updateClanStatus(clan.clan_id, {
+        await updateClanStatus(db, clan.clan_id, {
           status: 'error',
           last_checked: new Date().toISOString()
         });

@@ -1,0 +1,31 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "wot-clan-watcher"
+main = ".open-next/worker.js"
+compatibility_date = "2025-01-16"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[[routes]]
+pattern = "clanspy.win"
+custom_domain = true
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+# Environment variables
+[vars]
+WARGAMING_REALM = "eu"
+WARGAMING_API_BASE_URL = "https://api.worldoftanks.eu"
+NEXT_PUBLIC_APP_NAME = "WoT Clan Watcher"
+
+# Secrets (use: wrangler secret put WARGAMING_APPLICATION_ID)
+# Run this command before deploying:
+# npx wrangler secret put WARGAMING_APPLICATION_ID
+# Then paste your API key when prompted
+
+# D1 database binding for persistent storage
+[[d1_databases]]
+binding = "DB"
+database_name = "wot-watcher-db"
+database_id = "5d1182f8-b46e-46d4-b18a-2e25d6090752"

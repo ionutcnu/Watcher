@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { WargamingAPI } from '@/lib/wargaming-api';
+import { getWargamingAPI, apiKeyMissingResponse } from '@/lib/api-helpers';
 import { getLatestSnapshot, saveSnapshot, saveChanges } from '@/lib/storage';
 import { detectChanges, createSnapshot } from '@/lib/change-detector';
+import { getDB } from '@/lib/cloudflare';
 
 export async function POST(request: NextRequest) {
   try {
     const { clanId } = await request.json();
-    
+
     if (!clanId) {
       return NextResponse.json(
         { error: 'Clan ID is required' },
@@ -14,8 +15,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const api = new WargamingAPI();
-    
+    const db = getDB();
+    if (!db) {
+      console.error('D1 database binding not found');
+      return NextResponse.json(
+        { error: 'Database configuration error' },
+        { status: 500 }
+      );
+    }
+
+    const api = getWargamingAPI();
+    if (!api) {
+      return apiKeyMissingResponse();
+    }
+
     // Fetch current clan info
     const currentClan = await api.getClanInfo(clanId);
     if (!currentClan) {
@@ -26,18 +39,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Get previous snapshot
-    const previousSnapshot = await getLatestSnapshot(clanId);
-    
+    const previousSnapshot = await getLatestSnapshot(db, clanId);
+
     // Detect changes
     const changes = detectChanges(previousSnapshot, currentClan);
-    
+
     // Save new snapshot
     const newSnapshot = createSnapshot(currentClan);
-    await saveSnapshot(newSnapshot);
-    
+    await saveSnapshot(db, newSnapshot);
+
     // Save changes if any
     if (changes.length > 0) {
-      await saveChanges(changes);
+      await saveChanges(db, changes);
     }
 
     return NextResponse.json({

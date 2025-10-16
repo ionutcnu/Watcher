@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { WargamingAPI } from '@/lib/wargaming-api';
+import { getWargamingAPI, apiKeyMissingResponse } from '@/lib/api-helpers';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +14,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const api = new WargamingAPI();
+    const api = getWargamingAPI();
+    if (!api) {
+      return apiKeyMissingResponse();
+    }
     const rawData = await api.getClanNewsfeed(parseInt(clanId), realm);
 
     // Parse the events based on the actual API structure

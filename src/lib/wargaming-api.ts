@@ -1,14 +1,6 @@
 import { ClanInfo, ClanMember } from '@/types/clan';
 
 const BASE_URL = process.env.WARGAMING_API_BASE_URL || 'https://api.worldoftanks.eu';
-const APPLICATION_ID = process.env.WARGAMING_APPLICATION_ID;
-
-if (!APPLICATION_ID) {
-  throw new Error('WARGAMING_APPLICATION_ID environment variable is required');
-}
-
-// Type assertion after the runtime check
-const APP_ID: string = APPLICATION_ID;
 
 // API response types
 interface ApiMemberResponse {
@@ -48,9 +40,18 @@ interface ClanNewsfeedResponse {
 }
 
 export class WargamingAPI {
+  private applicationId: string;
+
+  constructor(applicationId?: string) {
+    this.applicationId = applicationId || process.env.WARGAMING_APPLICATION_ID || '';
+    if (!this.applicationId) {
+      throw new Error('WARGAMING_APPLICATION_ID is required');
+    }
+  }
+
   private async makeRequest(endpoint: string, params: Record<string, string | number> = {}) {
     const url = new URL(`${BASE_URL}${endpoint}`);
-    url.searchParams.set('application_id', APP_ID);
+    url.searchParams.set('application_id', this.applicationId);
     
     Object.entries(params).forEach(([key, value]) => {
       url.searchParams.set(key, value.toString());

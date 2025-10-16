@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { WargamingAPI } from '@/lib/wargaming-api';
+import { getWargamingAPI, apiKeyMissingResponse } from '@/lib/api-helpers';
 import { addMonitoredClan } from '@/lib/monitoring-storage';
+import { getDB } from '@/lib/cloudflare';
 
 interface ImportResult {
   tag: string;
@@ -33,6 +34,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const db = getDB();
+    if (!db) {
+      console.error('D1 database binding not found');
+      return NextResponse.json(
+        { success: false, error: 'Database configuration error' },
+        { status: 500 }
+      );
+    }
+
     // Validate API key exists
     if (!process.env.WARGAMING_APPLICATION_ID) {
       return NextResponse.json(
@@ -41,7 +51,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const api = new WargamingAPI();
+    const api = getWargamingAPI();
+    if (!api) {
+      return apiKeyMissingResponse();
+    }
     const results: ImportResult[] = [];
 
     // Process each clan tag
@@ -82,7 +95,7 @@ export async function POST(request: NextRequest) {
 
         // Try to add to monitoring list
         try {
-          await addMonitoredClan({
+          await addMonitoredClan(db, {
             clan_id: matchedClan.clan_id,
             tag: matchedClan.tag,
             name: matchedClan.name,
