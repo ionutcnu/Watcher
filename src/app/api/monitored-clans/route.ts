@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonitoredClans, addMonitoredClan, removeMonitoredClan, updateClanStatus } from '@/lib/monitoring-storage';
 import { getDB } from '@/lib/cloudflare';
+import { requireAuth } from '@/lib/auth-middleware';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Require authentication
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult; // Return 401 error
+    }
+
     const db = getDB();
     if (!db) {
       console.error('D1 database binding not found');
@@ -13,7 +20,8 @@ export async function GET() {
       );
     }
 
-    const clans = await getMonitoredClans(db);
+    // Get only user's clans
+    const clans = await getMonitoredClans(db, authResult.user.id);
     return NextResponse.json({ success: true, clans });
   } catch (error) {
     console.error('Get monitored clans error:', error);
@@ -26,6 +34,12 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Require authentication
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult; // Return 401 error
+    }
+
     const db = getDB();
     if (!db) {
       console.error('D1 database binding not found');
@@ -39,15 +53,18 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'add':
-        await addMonitoredClan(db, data);
+        // Add clan with user ownership
+        await addMonitoredClan(db, { ...data, user_id: authResult.user.id });
         return NextResponse.json({ success: true, message: 'Clan added to monitoring list' });
 
       case 'remove':
-        await removeMonitoredClan(db, data.clanId);
+        // Remove only if user owns the clan
+        await removeMonitoredClan(db, data.clanId, authResult.user.id);
         return NextResponse.json({ success: true, message: 'Clan removed from monitoring list' });
 
       case 'update':
-        await updateClanStatus(db, data.clanId, data.updates);
+        // Update only if user owns the clan
+        await updateClanStatus(db, data.clanId, data.updates, authResult.user.id);
         return NextResponse.json({ success: true, message: 'Clan status updated' });
 
       default:

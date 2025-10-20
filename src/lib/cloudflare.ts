@@ -8,6 +8,7 @@ export interface CloudflareEnv {
   WARGAMING_REALM: string;
   WARGAMING_API_BASE_URL: string;
   NEXT_PUBLIC_APP_NAME: string;
+  ADMIN_EMAILS?: string;
   ASSETS: unknown;
 }
 

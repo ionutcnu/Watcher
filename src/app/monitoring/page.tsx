@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { MonitoredClan } from '@/types/monitoring';
+import { useSession } from '@/lib/auth-client';
 import * as XLSX from 'xlsx';
 import { ModernBackground } from '@/components/ui/modern-background';
 import { StatCard } from '@/components/ui/stat-card';
@@ -42,6 +43,7 @@ function getWN8Color(wn8: number): string {
 }
 
 export default function MonitoringPage() {
+  const { data: session, isPending } = useSession();
   const [monitoredClans, setMonitoredClans] = useState<MonitoredClan[]>([]);
   const [loading, setLoading] = useState(true);
   const [addClanSearch, setAddClanSearch] = useState('');
@@ -479,10 +481,37 @@ export default function MonitoringPage() {
     return () => clearTimeout(timeoutId);
   }, [addClanSearch, searchClans]);
 
-  if (loading) {
+  // Show loading while checking authentication
+  if (isPending || loading) {
     return (
       <ModernBackground className="min-h-screen flex items-center justify-center">
         <TacticalLoader variant="turret" size="lg" color="green" message="Loading Dashboard..." />
+      </ModernBackground>
+    );
+  }
+
+  // Show login prompt if not authenticated
+  if (!session?.user) {
+    return (
+      <ModernBackground className="min-h-screen flex items-center justify-center">
+        <Card className="max-w-md w-full mx-4">
+          <CardHeader>
+            <CardTitle className="text-2xl text-center">Authentication Required</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-text-secondary">
+              You need to be signed in to access the monitoring dashboard.
+            </p>
+            <p className="text-text-tertiary text-sm">
+              Sign in using the header above to view and manage your monitored clans.
+            </p>
+            <Button asChild className="w-full">
+              <Link href="/">
+                Go to Home Page
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </ModernBackground>
     );
   }

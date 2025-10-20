@@ -2,14 +2,24 @@ import { MonitoredClan, MonitoringConfig, PlayerExclusionAlert } from '@/types/m
 import { D1Database } from './storage';
 
 // Monitored Clans Management
-export async function getMonitoredClans(db: D1Database): Promise<MonitoredClan[]> {
-  const stmt = db.prepare(`
-    SELECT
-      clan_id, tag, name, enabled, added_at, last_checked,
-      last_member_count, status, error_message, last_members
-    FROM monitored_clans
-    ORDER BY added_at DESC
-  `);
+export async function getMonitoredClans(db: D1Database, userId?: string): Promise<MonitoredClan[]> {
+  // If userId provided, filter by user. Otherwise return all (for backwards compatibility)
+  const query = userId
+    ? `SELECT
+        clan_id, tag, name, enabled, added_at, last_checked,
+        last_member_count, status, error_message, last_members
+      FROM monitored_clans
+      WHERE user_id = ?
+      ORDER BY added_at DESC`
+    : `SELECT
+        clan_id, tag, name, enabled, added_at, last_checked,
+        last_member_count, status, error_message, last_members
+      FROM monitored_clans
+      ORDER BY added_at DESC`;
+
+  const stmt = userId
+    ? db.prepare(query).bind(userId)
+    : db.prepare(query);
 
   const result = await stmt.all<{
     clan_id: number;
@@ -44,12 +54,18 @@ export async function getMonitoredClans(db: D1Database): Promise<MonitoredClan[]
 
 export async function addMonitoredClan(
   db: D1Database,
-  clan: Omit<MonitoredClan, 'added_at' | 'status'>
+  clan: Omit<MonitoredClan, 'added_at' | 'status'> & { user_id?: string }
 ): Promise<void> {
-  // Check if clan already exists
-  const existing = await db.prepare(
-    'SELECT clan_id FROM monitored_clans WHERE clan_id = ?'
-  ).bind(clan.clan_id).first();
+  // Check if clan already exists for this user
+  const existingQuery = clan.user_id
+    ? 'SELECT clan_id FROM monitored_clans WHERE clan_id = ? AND user_id = ?'
+    : 'SELECT clan_id FROM monitored_clans WHERE clan_id = ?';
+
+  const existingStmt = clan.user_id
+    ? db.prepare(existingQuery).bind(clan.clan_id, clan.user_id)
+    : db.prepare(existingQuery).bind(clan.clan_id);
+
+  const existing = await existingStmt.first();
 
   if (existing) {
     throw new Error(`Clan ${clan.tag} is already being monitored`);
@@ -58,8 +74,8 @@ export async function addMonitoredClan(
   const stmt = db.prepare(`
     INSERT INTO monitored_clans (
       clan_id, tag, name, enabled, added_at, status,
-      last_checked, last_member_count, error_message, last_members
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      last_checked, last_member_count, error_message, last_members, user_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     clan.clan_id,
     clan.tag,
@@ -70,21 +86,36 @@ export async function addMonitoredClan(
     clan.last_checked || null,
     clan.last_member_count || null,
     clan.error_message || null,
-    clan.last_members ? JSON.stringify(clan.last_members) : null
+    clan.last_members ? JSON.stringify(clan.last_members) : null,
+    clan.user_id || null
   );
 
   await stmt.run();
 }
 
-export async function removeMonitoredClan(db: D1Database, clanId: number): Promise<void> {
-  const stmt = db.prepare('DELETE FROM monitored_clans WHERE clan_id = ?').bind(clanId);
-  await stmt.run();
+export async function removeMonitoredClan(db: D1Database, clanId: number, userId?: string): Promise<void> {
+  // If userId provided, only delete if owned by user
+  const query = userId
+    ? 'DELETE FROM monitored_clans WHERE clan_id = ? AND user_id = ?'
+    : 'DELETE FROM monitored_clans WHERE clan_id = ?';
+
+  const stmt = userId
+    ? db.prepare(query).bind(clanId, userId)
+    : db.prepare(query).bind(clanId);
+
+  const result = await stmt.run();
+
+  // Check if clan was actually deleted (user owned it)
+  if (userId && result.meta.changes === 0) {
+    throw new Error('Clan not found or you do not have permission to remove it');
+  }
 }
 
 export async function updateClanStatus(
   db: D1Database,
   clanId: number,
-  updates: Partial<MonitoredClan>
+  updates: Partial<MonitoredClan>,
+  userId?: string
 ): Promise<void> {
   const fields: string[] = [];
   const values: unknown[] = [];
@@ -118,11 +149,21 @@ export async function updateClanStatus(
     return;
   }
 
-  const stmt = db.prepare(
-    `UPDATE monitored_clans SET ${fields.join(', ')} WHERE clan_id = ?`
-  ).bind(...values, clanId);
+  // If userId provided, only update if owned by user
+  const whereClause = userId
+    ? 'WHERE clan_id = ? AND user_id = ?'
+    : 'WHERE clan_id = ?';
 
-  await stmt.run();
+  const stmt = userId
+    ? db.prepare(`UPDATE monitored_clans SET ${fields.join(', ')} ${whereClause}`).bind(...values, clanId, userId)
+    : db.prepare(`UPDATE monitored_clans SET ${fields.join(', ')} ${whereClause}`).bind(...values, clanId);
+
+  const result = await stmt.run();
+
+  // Check if clan was actually updated (user owned it)
+  if (userId && result.meta.changes === 0) {
+    throw new Error('Clan not found or you do not have permission to update it');
+  }
 }
 
 // Monitoring Configuration
