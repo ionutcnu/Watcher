@@ -951,7 +951,15 @@ export default function MonitoringPage() {
                                   {clanResult.leavers?.map((leaver, index) => (
                                     <tr key={index} className="hover:bg-gray-600">
                                       <td className="px-3 py-3 text-sm">
-                                        <div className="text-white font-medium">{leaver.player.account_name}</div>
+                                        <a
+                                          href={`https://tomato.gg/stats/${encodeURIComponent(leaver.player.account_name)}-${leaver.player.account_id}/EU`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-cyan-400 hover:text-cyan-300 font-medium underline decoration-transparent hover:decoration-cyan-300 transition-colors"
+                                          aria-label={`View ${leaver.player.account_name}'s TomatoGG profile`}
+                                        >
+                                          {leaver.player.account_name}
+                                        </a>
                                         <div className="text-gray-400 text-xs">{leaver.player.account_id}</div>
                                       </td>
                                       <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-300">

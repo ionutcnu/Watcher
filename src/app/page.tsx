@@ -116,6 +116,11 @@ export default function Home() {
 
       setScanResult(result);
       loadRecentChanges();
+
+      // If no changes detected (first scan or no activity), automatically load clan history
+      if (!result.changes || result.changes.length === 0) {
+        loadClanHistory();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -293,12 +298,12 @@ export default function Home() {
       }
 
       events.sort((a, b) => b.timestamp - a.timestamp);
-      
+
       // Store all events and show limited events
       setAllClanHistory(events);
       applyFiltersAndLimits(events);
       setShowHistory(true);
-      
+
     } catch (err) {
       console.error('Failed to load clan history:', err);
     } finally {
@@ -383,8 +388,23 @@ export default function Home() {
   useEffect(() => {
     if (allClanHistory.length > 0) {
       applyFiltersAndLimits(allClanHistory);
+
+      // Update scan result summary with history counts
+      if (scanResult) {
+        const joins = allClanHistory.filter(e => e.type === 'join').length;
+        const leaves = allClanHistory.filter(e => e.type === 'leave').length;
+
+        setScanResult(prev => prev ? {
+          ...prev,
+          summary: {
+            ...prev.summary!,
+            joins,
+            leaves
+          }
+        } : null);
+      }
     }
-  }, [eventTypeFilter, eventLimit]);
+  }, [eventTypeFilter, eventLimit, allClanHistory.length]);
 
   return (
     <ModernBackground>
