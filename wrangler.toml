@@ -18,11 +18,13 @@ binding = "ASSETS"
 WARGAMING_REALM = "eu"
 WARGAMING_API_BASE_URL = "https://api.worldoftanks.eu"
 NEXT_PUBLIC_APP_NAME = "WoT Clan Watcher"
+NEXT_PUBLIC_APP_URL = "https://clanspy.win"
 
-# Secrets (use: wrangler secret put WARGAMING_APPLICATION_ID)
-# Run this command before deploying:
-# npx wrangler secret put WARGAMING_APPLICATION_ID
-# Then paste your API key when prompted
+# Secrets (set using: npx wrangler secret put SECRET_NAME)
+# Required secrets:
+# - WARGAMING_APPLICATION_ID (Wargaming API key)
+# - BETTER_AUTH_SECRET (Better Auth secret key)
+# - ADMIN_EMAILS (comma-separated admin emails)
 
 # D1 database binding for persistent storage
 [[d1_databases]]

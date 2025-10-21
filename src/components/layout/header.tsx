@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession, signOut } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { AuthModal } from '@/components/auth/auth-modal';
@@ -10,6 +10,22 @@ export function Header() {
   const { data: session, isPending } = useSession();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [signupEnabled, setSignupEnabled] = useState(false);
+
+  // Check if signup is enabled
+  useEffect(() => {
+    fetch('/api/signup-check')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.enabled) {
+          setSignupEnabled(true);
+        }
+      })
+      .catch(() => {
+        // If error, keep signup disabled
+        setSignupEnabled(false);
+      });
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -82,7 +98,14 @@ export function Header() {
                 >
                   Sign In
                 </Button>
-                {/* Sign Up disabled - admin creates accounts */}
+                {signupEnabled && (
+                  <Button
+                    onClick={() => openAuthModal('register')}
+                    size="sm"
+                  >
+                    Sign Up
+                  </Button>
+                )}
               </>
             )}
           </div>

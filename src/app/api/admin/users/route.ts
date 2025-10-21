@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth-middleware';
 import { Kysely } from 'kysely';
 import { D1Dialect } from 'kysely-d1';
-import { getDB, getCloudflareEnv } from '@/lib/cloudflare';
-import crypto from 'crypto';
+import { getDB, getCloudflareEnvSync } from '@/lib/cloudflare';
+import { auth } from '@/lib/auth';
 
 // Admin check - checks if user email is in ADMIN_EMAILS environment variable
 function isAdmin(userEmail: string): boolean {
-  const env = getCloudflareEnv();
+  const env = getCloudflareEnvSync();
   const adminEmails = env?.ADMIN_EMAILS?.split(',').map(email => email.trim()) || [];
   console.log('[Admin] Checking admin access for:', userEmail);
   console.log('[Admin] Admin emails configured:', adminEmails);
@@ -17,21 +17,11 @@ function isAdmin(userEmail: string): boolean {
 }
 
 // Get Kysely instance
-function getKysely() {
-  const d1 = getDB();
+async function getKysely() {
+  const d1 = await getDB();
   return new Kysely({
     dialect: new D1Dialect({ database: d1 }),
   });
-}
-
-// Hash password using Better Auth's method (bcrypt-like)
-async function hashPassword(password: string): Promise<string> {
-  // Better Auth uses bcrypt, but for simplicity we'll use a basic hash
-  // In production, Better Auth handles this internally
-  const crypto = require('crypto');
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
-  return `${salt}:${hash}`;
 }
 
 // List all users
@@ -50,13 +40,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const db = getKysely();
+    const db = await getKysely();
 
-    // Get all users
+    // Get all users (including active status)
     const users = await db
-      .selectFrom('user')
-      .select(['id', 'email', 'name', 'username', 'emailVerified', 'createdAt', 'updatedAt'])
-      .orderBy('createdAt', 'desc')
+      .selectFrom('user' as never)
+      .select(['id', 'email', 'name', 'username', 'emailVerified', 'active', 'createdAt', 'updatedAt'] as never)
+      .orderBy('createdAt' as never, 'desc')
       .execute();
 
     return NextResponse.json({ success: true, users });
@@ -86,11 +76,11 @@ export async function POST(request: NextRequest) {
     }
 
     const { action, ...data } = await request.json();
-    const db = getKysely();
+    const db = await getKysely();
 
     switch (action) {
       case 'create': {
-        // Create new user
+        // Create new user using Better Auth's internal API
         const { email, password, name, username } = data;
 
         if (!email || !password) {
@@ -102,9 +92,9 @@ export async function POST(request: NextRequest) {
 
         // Check if user already exists
         const existing = await db
-          .selectFrom('user')
-          .select('id')
-          .where('email', '=', email)
+          .selectFrom('user' as never)
+          .select('id' as never)
+          .where('email' as never, '=', email)
           .executeTakeFirst();
 
         if (existing) {
@@ -114,50 +104,46 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Generate user ID
-        const userId = crypto.randomUUID();
-        const now = Date.now();
+        try {
+          // Use Better Auth's API to create user (this handles password hashing correctly)
+          const result = await auth.api.signUpEmail({
+            body: {
+              email,
+              password,
+              name: name || username || email.split('@')[0],
+            },
+          });
 
-        // Create user record
-        await db
-          .insertInto('user')
-          .values({
-            id: userId,
-            email,
-            name: name || null,
-            username: username || null,
-            emailVerified: 0,
-            createdAt: now,
-            updatedAt: now,
-            image: null,
-          })
-          .execute();
+          if (!result) {
+            throw new Error('Failed to create user via Better Auth');
+          }
 
-        // Create account record with hashed password
-        const accountId = crypto.randomUUID();
-        const hashedPassword = await hashPassword(password);
+          // Get the created user ID from the result
+          const userId = (result as { user?: { id: string } })?.user?.id;
 
-        await db
-          .insertInto('account')
-          .values({
-            id: accountId,
+          if (!userId) {
+            throw new Error('User created but ID not returned');
+          }
+
+          // Set user as active (admin-created users are active by default)
+          await db
+            .updateTable('user' as never)
+            .set({ active: 1, updatedAt: Date.now() } as never)
+            .where('id' as never, '=' as never, userId as never)
+            .execute();
+
+          return NextResponse.json({
+            success: true,
+            message: 'User created successfully',
             userId,
-            accountId: email, // Use email as accountId for email/password
-            providerId: 'credential', // Better Auth uses 'credential' for email/password
-            password: hashedPassword,
-            accessToken: null,
-            refreshToken: null,
-            expiresAt: null,
-            createdAt: now,
-            updatedAt: now,
-          })
-          .execute();
-
-        return NextResponse.json({
-          success: true,
-          message: 'User created successfully',
-          userId,
-        });
+          });
+        } catch (err) {
+          console.error('Better Auth user creation error:', err);
+          return NextResponse.json(
+            { error: err instanceof Error ? err.message : 'Failed to create user' },
+            { status: 500 }
+          );
+        }
       }
 
       case 'delete': {
@@ -181,8 +167,8 @@ export async function POST(request: NextRequest) {
 
         // Delete user (cascade will delete sessions and accounts)
         await db
-          .deleteFrom('user')
-          .where('id', '=', userId)
+          .deleteFrom('user' as never)
+          .where('id' as never, '=', userId)
           .execute();
 
         return NextResponse.json({
@@ -202,7 +188,12 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const updates: any = {
+        const updates: {
+          updatedAt: number;
+          email?: string;
+          name?: string | null;
+          username?: string | null;
+        } = {
           updatedAt: Date.now(),
         };
 
@@ -211,14 +202,45 @@ export async function POST(request: NextRequest) {
         if (username !== undefined) updates.username = username || null;
 
         await db
-          .updateTable('user')
-          .set(updates)
-          .where('id', '=', userId)
+          .updateTable('user' as never)
+          .set(updates as never)
+          .where('id' as never, '=', userId)
           .execute();
 
         return NextResponse.json({
           success: true,
           message: 'User updated successfully',
+        });
+      }
+
+      case 'toggle_active': {
+        // Toggle user active status
+        const { userId, active } = data;
+
+        if (!userId) {
+          return NextResponse.json(
+            { error: 'User ID is required' },
+            { status: 400 }
+          );
+        }
+
+        // Prevent deactivating yourself
+        if (userId === authResult.user.id) {
+          return NextResponse.json(
+            { error: 'Cannot deactivate your own account' },
+            { status: 400 }
+          );
+        }
+
+        await db
+          .updateTable('user' as never)
+          .set({ active: active ? 1 : 0, updatedAt: Date.now() } as never)
+          .where('id' as never, '=', userId)
+          .execute();
+
+        return NextResponse.json({
+          success: true,
+          message: `User ${active ? 'activated' : 'deactivated'} successfully`,
         });
       }
 

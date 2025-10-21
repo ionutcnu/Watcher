@@ -4,6 +4,7 @@ export interface MonitoredClan {
   name: string;
   enabled: boolean;
   added_at: string;
+  display_order?: number;
   last_checked?: string;
   last_member_count?: number;
   status: 'active' | 'error' | 'never_checked';

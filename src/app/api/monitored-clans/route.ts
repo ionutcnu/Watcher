@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       return authResult; // Return 401 error
     }
 
-    const db = getDB();
+    const db = await getDB();
     if (!db) {
       console.error('D1 database binding not found');
       return NextResponse.json(
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       return authResult; // Return 401 error
     }
 
-    const db = getDB();
+    const db = await getDB();
     if (!db) {
       console.error('D1 database binding not found');
       return NextResponse.json(

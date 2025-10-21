@@ -5,7 +5,7 @@ import { getDB } from '@/lib/cloudflare';
 
 export async function POST(request: NextRequest) {
   try {
-    const db = getDB();
+    const db = await getDB();
     if (!db) {
       console.error('D1 database binding not found');
       return NextResponse.json(

@@ -96,6 +96,8 @@ export default function MonitoringPage() {
     }>;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedClans, setSelectedClans] = useState<Set<number>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   useEffect(() => {
     loadMonitoredClans();
@@ -208,6 +210,99 @@ export default function MonitoringPage() {
     }
   };
 
+  // Bulk selection handlers
+  const toggleSelectAll = () => {
+    if (selectedClans.size === monitoredClans.length) {
+      setSelectedClans(new Set());
+    } else {
+      setSelectedClans(new Set(monitoredClans.map(clan => clan.clan_id)));
+    }
+  };
+
+  const toggleSelectClan = (clanId: number) => {
+    const newSelected = new Set(selectedClans);
+    if (newSelected.has(clanId)) {
+      newSelected.delete(clanId);
+    } else {
+      newSelected.add(clanId);
+    }
+    setSelectedClans(newSelected);
+  };
+
+  // Bulk operations
+  const bulkEnableClans = async () => {
+    if (selectedClans.size === 0) return;
+
+    if (!confirm(`Enable ${selectedClans.size} selected clans?`)) return;
+
+    setBulkActionLoading(true);
+    try {
+      for (const clanId of selectedClans) {
+        await toggleClanEnabled(clanId, true);
+      }
+      setSelectedClans(new Set());
+      alert(`Successfully enabled ${selectedClans.size} clans`);
+    } catch (error) {
+      console.error('Bulk enable failed:', error);
+      alert('Some clans failed to enable');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const bulkDisableClans = async () => {
+    if (selectedClans.size === 0) return;
+
+    if (!confirm(`Disable ${selectedClans.size} selected clans?`)) return;
+
+    setBulkActionLoading(true);
+    try {
+      for (const clanId of selectedClans) {
+        await toggleClanEnabled(clanId, false);
+      }
+      setSelectedClans(new Set());
+      alert(`Successfully disabled ${selectedClans.size} clans`);
+    } catch (error) {
+      console.error('Bulk disable failed:', error);
+      alert('Some clans failed to disable');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const bulkRemoveClans = async () => {
+    if (selectedClans.size === 0) return;
+
+    if (!confirm(`Remove ${selectedClans.size} selected clans from monitoring? This cannot be undone.`)) return;
+
+    setBulkActionLoading(true);
+    try {
+      for (const clanId of selectedClans) {
+        const response = await fetch('/api/monitored-clans', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'remove',
+            clanId
+          })
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+          console.error(`Failed to remove clan ${clanId}:`, result.error);
+        }
+      }
+      setSelectedClans(new Set());
+      loadMonitoredClans();
+      alert(`Successfully removed ${selectedClans.size} clans`);
+    } catch (error) {
+      console.error('Bulk remove failed:', error);
+      alert('Some clans failed to remove');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
   const runManualCheck = async () => {
     setManualCheckLoading(true);
     setManualCheckResults(null);
@@ -217,98 +312,152 @@ export default function MonitoringPage() {
     setStatsLoading({});
     setStatsLoaded({});
 
+    const BATCH_SIZE = 20; // Process 20 clans per batch
+    let batchStart = 0;
+    let allResults: Array<{
+      clan_id: number;
+      clan_tag: string;
+      clan_name: string;
+      error?: string;
+      count?: number;
+      leavers?: Array<{
+        player: { account_id: number; account_name: string };
+        timestamp: number;
+        date: string;
+        time: string;
+        description: string;
+        stats: TomatoPlayerStats | null;
+      }>;
+    }> = [];
+    let totalLeavers = 0;
+    let totalClans = 0;
+
     try {
-      const response = await fetch('/api/monitoring/manual-check', {
-        method: 'POST'
-      });
-
-      if (!response.body) {
-        throw new Error('No response body');
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
+      // Process batches until no more clans
       while (true) {
-        const { done, value } = await reader.read();
+        const response = await fetch('/api/monitoring/manual-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ batchStart, batchSize: BATCH_SIZE })
+        });
 
-        if (done) break;
+        if (!response.body) {
+          throw new Error('No response body');
+        }
 
-        buffer += decoder.decode(value, { stream: true });
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let hasMore = false;
+        let nextBatchStart = 0;
 
-        // Process complete messages (separated by \n\n)
-        const messages = buffer.split('\n\n');
-        buffer = messages.pop() || ''; // Keep incomplete message in buffer
+        while (true) {
+          const { done, value } = await reader.read();
 
-        for (const message of messages) {
-          if (!message.trim() || !message.startsWith('data: ')) continue;
+          if (done) break;
 
-          try {
-            const data = JSON.parse(message.slice(6)); // Remove 'data: ' prefix
+          buffer += decoder.decode(value, { stream: true });
 
-            // Update progress based on message type
-            switch (data.type) {
-              case 'start':
-              case 'info':
-                setProgressMessage(data.message);
-                break;
+          // Process complete messages (separated by \n\n)
+          const messages = buffer.split('\n\n');
+          buffer = messages.pop() || ''; // Keep incomplete message in buffer
 
-              case 'clan_start':
-                setProgressMessage(data.message);
-                if (data.current && data.total) {
-                  setProgressPercent((data.current / data.total) * 100);
-                  setProgressDetails({
-                    current: data.current,
-                    total: data.total,
-                    type: 'clans'
+          for (const message of messages) {
+            if (!message.trim() || !message.startsWith('data: ')) continue;
+
+            try {
+              const data = JSON.parse(message.slice(6)); // Remove 'data: ' prefix
+
+              // Update progress based on message type
+              switch (data.type) {
+                case 'start':
+                case 'info':
+                  setProgressMessage(data.message);
+                  if (data.total) totalClans = data.total;
+                  break;
+
+                case 'clan_start':
+                  setProgressMessage(data.message);
+                  if (data.current && data.total) {
+                    setProgressPercent((data.current / data.total) * 100);
+                    setProgressDetails({
+                      current: data.current,
+                      total: data.total,
+                      type: 'clans'
+                    });
+                  }
+                  break;
+
+                case 'clan_complete':
+                  setProgressMessage(data.message);
+                  if (data.current && data.total) {
+                    setProgressPercent((data.current / data.total) * 100);
+                  }
+                  break;
+
+                case 'batch_complete':
+                case 'complete':
+                  setProgressMessage(data.message);
+                  if (data.current && data.total) {
+                    setProgressPercent((data.current / data.total) * 100);
+                  }
+
+                  // Accumulate results from this batch
+                  if (data.results) {
+                    allResults = [...allResults, ...data.results];
+                  }
+                  if (data.total_leavers !== undefined) {
+                    totalLeavers += data.total_leavers;
+                  }
+                  if (data.total) {
+                    totalClans = data.total;
+                  }
+
+                  // Check if more batches to process
+                  hasMore = data.hasMore || false;
+                  nextBatchStart = data.nextBatchStart || 0;
+                  break;
+
+                case 'error':
+                  setProgressMessage('Error: ' + data.error);
+                  setManualCheckResults({
+                    success: false,
+                    error: data.error,
+                    results: []
                   });
-                }
-                break;
-
-              case 'stats_start':
-                setProgressMessage(data.message);
-                break;
-
-              case 'stats_progress':
-                setProgressMessage(data.message);
-                if (data.current !== undefined && data.total) {
-                  const statsPercent = (data.current / data.total) * 100;
-                  setProgressPercent(statsPercent);
-                }
-                break;
-
-              case 'clan_complete':
-                setProgressMessage(data.message);
-                if (data.current && data.total) {
-                  setProgressPercent((data.current / data.total) * 100);
-                }
-                break;
-
-              case 'complete':
-                setProgressMessage(data.message);
-                setProgressPercent(100);
-                setManualCheckResults(data);
-
-                // Collapse all results by default (stats will load on-demand)
-                if (data.results) {
-                  const expanded: Record<number, boolean> = {};
-                  data.results.forEach((r: { clan_id: number }) => {
-                    expanded[r.clan_id] = false;
-                  });
-                  setExpandedResults(expanded);
-                }
-                break;
-
-              case 'error':
-                setProgressMessage('Error: ' + data.error);
-                setManualCheckResults(data);
-                break;
+                  return; // Exit early on error
+              }
+            } catch (parseError) {
+              console.error('Failed to parse progress message:', parseError);
             }
-          } catch (parseError) {
-            console.error('Failed to parse progress message:', parseError);
           }
         }
+
+        // If no more batches, we're done
+        if (!hasMore) {
+          setProgressMessage(`Manual check complete: ${totalClans} clans checked, ${totalLeavers} total leavers found.`);
+          setProgressPercent(100);
+          setManualCheckResults({
+            success: true,
+            clans_checked: totalClans,
+            total_leavers: totalLeavers,
+            results: allResults
+          });
+
+          // Collapse all results by default (stats will load on-demand)
+          const expanded: Record<number, boolean> = {};
+          allResults.forEach((r: { clan_id: number }) => {
+            expanded[r.clan_id] = false;
+          });
+          setExpandedResults(expanded);
+          break;
+        }
+
+        // Move to next batch
+        batchStart = nextBatchStart;
+
+        // Small delay between batches
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
       loadMonitoredClans();
@@ -316,7 +465,8 @@ export default function MonitoringPage() {
       console.error('Manual check failed:', error);
       setManualCheckResults({
         success: false,
-        error: 'Manual check failed'
+        error: 'Manual check failed',
+        results: []
       });
       setProgressMessage('Manual check failed');
     } finally {
@@ -436,32 +586,82 @@ export default function MonitoringPage() {
         return;
       }
 
-      // Call bulk import API
-      const response = await fetch('/api/bulk-import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clanTags })
-      });
+      // Process in batches to avoid "too many subrequests" error
+      const BATCH_SIZE = 40; // Safely under Cloudflare's 50 subrequest limit
+      const batches: string[][] = [];
 
-      // Handle non-JSON responses
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const textResponse = await response.text();
-        console.error('Non-JSON response received:', textResponse);
-        alert(`Server error: ${response.status} - ${response.statusText}. Check console for details.`);
-        return;
+      for (let i = 0; i < clanTags.length; i += BATCH_SIZE) {
+        batches.push(clanTags.slice(i, i + BATCH_SIZE));
       }
 
-      const result = await response.json();
+      console.log(`Processing ${clanTags.length} clans in ${batches.length} batches of ${BATCH_SIZE}`);
 
-      if (result.success) {
-        setBulkImportResults(result);
-        loadMonitoredClans(); // Refresh the list
-      } else {
-        const errorMsg = result.error || 'Bulk import failed';
-        console.error('Bulk import error:', result);
-        alert(errorMsg);
+      // Process each batch
+      const allResults: Array<{
+        tag: string;
+        success: boolean;
+        error?: string;
+        clan_id?: number;
+        name?: string;
+      }> = [];
+      let totalSuccessful = 0;
+      let totalFailed = 0;
+
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        const batch = batches[batchIndex];
+
+        console.log(`Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} clans)...`);
+
+        try {
+          const response = await fetch('/api/bulk-import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clanTags: batch })
+          });
+
+          // Handle non-JSON responses
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+            const textResponse = await response.text();
+            console.error(`Batch ${batchIndex + 1} non-JSON response:`, textResponse);
+            alert(`Server error for batch ${batchIndex + 1}: ${response.status} - ${response.statusText}`);
+            continue;
+          }
+
+          const result = await response.json();
+
+          if (result.success) {
+            allResults.push(...result.results);
+            totalSuccessful += result.successful;
+            totalFailed += result.failed;
+          } else {
+            console.error(`Batch ${batchIndex + 1} error:`, result);
+            alert(`Batch ${batchIndex + 1} failed: ${result.error || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error(`Batch ${batchIndex + 1} error:`, error);
+          alert(`Batch ${batchIndex + 1} failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+
+        // Small delay between batches to avoid rate limiting
+        if (batchIndex < batches.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
+
+      // Combine all results
+      const combinedResult = {
+        success: true,
+        total: clanTags.length,
+        successful: totalSuccessful,
+        failed: totalFailed,
+        results: allResults
+      };
+
+      setBulkImportResults(combinedResult);
+      loadMonitoredClans(); // Refresh the list
+
+      console.log(`Import complete: ${totalSuccessful} successful, ${totalFailed} failed out of ${clanTags.length} total`)
     } catch (error) {
       console.error('Excel import error:', error);
       alert('Failed to process Excel file. Please ensure it is a valid .xlsx or .xls file.');
@@ -616,31 +816,83 @@ export default function MonitoringPage() {
                   No clans are being monitored. Add some clans below to get started.
                 </p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-700">
-                    <thead className="bg-gray-900">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                          Clan
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                          Last Check
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                          Members
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-gray-800 divide-y divide-gray-700">
-                      {monitoredClans.map((clan) => (
-                        <tr key={clan.clan_id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                <>
+                  {/* Bulk Actions Bar */}
+                  {selectedClans.size > 0 && (
+                    <div className="mb-4 p-4 bg-gray-700 rounded-lg flex items-center justify-between">
+                      <div className="text-white">
+                        {selectedClans.size} clan{selectedClans.size !== 1 ? 's' : ''} selected
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={bulkEnableClans}
+                          disabled={bulkActionLoading}
+                          size="sm"
+                          variant="default"
+                        >
+                          Enable Selected
+                        </Button>
+                        <Button
+                          onClick={bulkDisableClans}
+                          disabled={bulkActionLoading}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          Disable Selected
+                        </Button>
+                        <Button
+                          onClick={bulkRemoveClans}
+                          disabled={bulkActionLoading}
+                          size="sm"
+                          variant="destructive"
+                        >
+                          Remove Selected
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-700">
+                      <thead className="bg-gray-900">
+                        <tr>
+                          <th className="px-3 py-3 text-left">
+                            <input
+                              type="checkbox"
+                              checked={selectedClans.size === monitoredClans.length && monitoredClans.length > 0}
+                              onChange={toggleSelectAll}
+                              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                            />
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Clan
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Last Check
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Members
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-gray-800 divide-y divide-gray-700">
+                        {monitoredClans.map((clan) => (
+                          <tr key={clan.clan_id} className={selectedClans.has(clan.clan_id) ? 'bg-gray-700' : ''}>
+                            <td className="px-3 py-4">
+                              <input
+                                type="checkbox"
+                                checked={selectedClans.has(clan.clan_id)}
+                                onChange={() => toggleSelectClan(clan.clan_id)}
+                                className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500"
+                              />
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
                             <div>
                               <div className="text-sm font-medium text-white">
                                 [{clan.tag}] {clan.name}
@@ -701,6 +953,7 @@ export default function MonitoringPage() {
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
             </div>
           )}
@@ -956,23 +1209,23 @@ export default function MonitoringPage() {
                                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                                       Left Date
                                     </th>
-                                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="60 Days Statistics">
-                                      Battles
+                                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="Battles in last 60 days">
+                                      Battles (60d)
                                     </th>
-                                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="60 Days WN8">
-                                      WN8
+                                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="WN8 rating in last 60 days">
+                                      WN8 (60d)
                                     </th>
-                                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="60 Days Win Rate">
-                                      Win%
+                                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="Win rate in last 60 days">
+                                      Win% (60d)
                                     </th>
-                                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="60 Days Average Damage">
-                                      Avg DMG
+                                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="Average damage in last 60 days">
+                                      Avg DMG (60d)
                                     </th>
-                                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="60 Days K/D Ratio">
-                                      K/D
+                                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="Kill/Death ratio in last 60 days">
+                                      K/D (60d)
                                     </th>
-                                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="60 Days Survival Rate">
-                                      Surv%
+                                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="Survival rate in last 60 days">
+                                      Surv% (60d)
                                     </th>
                                   </tr>
                                 </thead>

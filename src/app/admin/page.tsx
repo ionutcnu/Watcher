@@ -16,6 +16,7 @@ interface User {
   name: string | null;
   username: string | null;
   emailVerified: number;
+  active: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -34,9 +35,14 @@ export default function AdminPage() {
   const [newUsername, setNewUsername] = useState('');
   const [creating, setCreating] = useState(false);
 
+  // Settings state
+  const [signupEnabled, setSignupEnabled] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+
   useEffect(() => {
     if (session?.user) {
       loadUsers();
+      loadSettings();
     }
   }, [session]);
 
@@ -133,6 +139,70 @@ export default function AdminPage() {
     }
   };
 
+  const toggleUserActive = async (userId: string, currentActive: boolean) => {
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'toggle_active',
+          userId,
+          active: !currentActive,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        await loadUsers();
+      } else {
+        alert(result.error || 'Failed to toggle user status');
+      }
+    } catch (err) {
+      console.error('Failed to toggle user:', err);
+      alert('Failed to toggle user status');
+    }
+  };
+
+  const loadSettings = async () => {
+    try {
+      const response = await fetch('/api/admin/settings');
+      const result = await response.json();
+
+      if (result.success) {
+        setSignupEnabled(result.settings.signupEnabled);
+      }
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    }
+  };
+
+  const toggleSignup = async () => {
+    try {
+      setSettingsLoading(true);
+      const response = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          signupEnabled: !signupEnabled,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSignupEnabled(!signupEnabled);
+      } else {
+        alert(result.error || 'Failed to update settings');
+      }
+    } catch (err) {
+      console.error('Failed to toggle signup:', err);
+      alert('Failed to update settings');
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
   // Show loading while checking authentication
   if (isPending || loading) {
     return (
@@ -175,7 +245,7 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-text-secondary">
-              You don't have permission to access the admin panel.
+              You don&apos;t have permission to access the admin panel.
             </p>
             <p className="text-text-tertiary text-sm">
               Contact the system administrator if you need access.
@@ -211,6 +281,30 @@ export default function AdminPage() {
             <p className="text-red-500">{error}</p>
           </div>
         )}
+
+        {/* Sign-up Settings */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Sign-up Settings</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-text-primary">Allow Public Sign-up</h3>
+                <p className="text-sm text-text-secondary mt-1">
+                  When enabled, anyone can create an account (requires admin approval to activate)
+                </p>
+              </div>
+              <Button
+                onClick={toggleSignup}
+                disabled={settingsLoading}
+                variant={signupEnabled ? 'default' : 'secondary'}
+              >
+                {settingsLoading ? 'Updating...' : signupEnabled ? 'Enabled' : 'Disabled'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Create User Form */}
         <Card className="mb-8">
@@ -305,6 +399,9 @@ export default function AdminPage() {
                         Username
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                         Created
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
@@ -327,18 +424,39 @@ export default function AdminPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
                           {user.username || '-'}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              user.active === 1
+                                ? 'bg-green-800 text-green-300'
+                                : 'bg-yellow-800 text-yellow-300'
+                            }`}
+                          >
+                            {user.active === 1 ? 'Active' : 'Pending Approval'}
+                          </span>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
                           {new Date(user.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <Button
-                            onClick={() => deleteUser(user.id, user.email)}
-                            variant="secondary"
-                            size="sm"
-                            disabled={session?.user.id === user.id}
-                          >
-                            Delete
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              onClick={() => toggleUserActive(user.id, user.active === 1)}
+                              variant="secondary"
+                              size="sm"
+                              disabled={session?.user.id === user.id}
+                            >
+                              {user.active === 1 ? 'Deactivate' : 'Activate'}
+                            </Button>
+                            <Button
+                              onClick={() => deleteUser(user.id, user.email)}
+                              variant="secondary"
+                              size="sm"
+                              disabled={session?.user.id === user.id}
+                            >
+                              Delete
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}

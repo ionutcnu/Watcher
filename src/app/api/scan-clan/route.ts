@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const db = getDB();
+    const db = await getDB();
     if (!db) {
       console.error('D1 database binding not found');
       return NextResponse.json(
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const api = getWargamingAPI();
+    const api = await getWargamingAPI();
     if (!api) {
       return apiKeyMissingResponse();
     }

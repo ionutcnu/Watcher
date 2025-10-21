@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getMonitoredClans, updateClanStatus } from '@/lib/monitoring-storage';
 import { getDB } from '@/lib/cloudflare';
+import { requireAuth } from '@/lib/auth-middleware';
 
 interface TomatoPlayerStats {
   battles: number;
@@ -30,6 +31,8 @@ interface ProgressData {
   leavers_count?: number;
   clans_checked?: number;
   total_leavers?: number;
+  hasMore?: boolean;
+  nextBatchStart?: number;
   results?: Array<{
     clan_id: number;
     clan_tag: string;
@@ -118,8 +121,27 @@ async function fetchTomatoStats(
   }
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  // Require authentication
+  const authResult = await requireAuth(request);
+  if (authResult instanceof NextResponse) {
+    return authResult; // Return 401 error
+  }
+
+  const userId = authResult.user.id;
   const encoder = new TextEncoder();
+
+  // Parse request body to get batch parameters
+  let batchStart = 0;
+  let batchSize = 20; // Process 20 clans per batch to stay within Cloudflare limits
+
+  try {
+    const body = await request.json();
+    if (body.batchStart !== undefined) batchStart = body.batchStart;
+    if (body.batchSize !== undefined) batchSize = body.batchSize;
+  } catch {
+    // No body or invalid JSON - use defaults
+  }
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -129,10 +151,10 @@ export async function POST() {
       };
 
       try {
-        console.log('[Manual Check] Starting manual check...');
+        console.log(`[Manual Check] Starting manual check batch (start: ${batchStart}, size: ${batchSize})...`);
         sendProgress({ type: 'start', message: 'Starting manual check...' });
 
-        const db = getDB();
+        const db = await getDB();
         if (!db) {
           console.error('[Manual Check] D1 database binding not found');
           sendProgress({
@@ -145,15 +167,19 @@ export async function POST() {
           return;
         }
 
-        const monitoredClans = await getMonitoredClans(db);
+        const monitoredClans = await getMonitoredClans(db, userId);
         console.log('[Manual Check] Total monitored clans:', monitoredClans.length);
 
         const enabledClans = monitoredClans.filter(clan => clan.enabled);
         console.log('[Manual Check] Enabled clans:', enabledClans.length);
 
-        sendProgress({
-          type: 'info',
-          message: `Found ${enabledClans.length} enabled clans to check`
+        // Sort by display_order (Excel import order) to match monitoring list
+        enabledClans.sort((a, b) => {
+          // Clans without display_order go to the end
+          if (a.display_order === undefined && b.display_order === undefined) return 0;
+          if (a.display_order === undefined) return 1;
+          if (b.display_order === undefined) return -1;
+          return a.display_order - b.display_order;
         });
 
         if (enabledClans.length === 0) {
@@ -161,31 +187,54 @@ export async function POST() {
             type: 'complete',
             message: 'No enabled clans to monitor',
             success: false,
-            error: 'No enabled clans to monitor'
+            error: 'No enabled clans to monitor',
+            total: 0,
+            clans_checked: 0,
+            total_leavers: 0,
+            results: []
           });
           controller.close();
           return;
         }
 
-        const results = [];
-        let totalLeavers = 0;
-        let clansChecked = 0;
+        // Get the batch of clans to process
+        const batchEnd = Math.min(batchStart + batchSize, enabledClans.length);
+        const batchClans = enabledClans.slice(batchStart, batchEnd);
+        const totalClans = enabledClans.length;
+        const hasMore = batchEnd < totalClans;
 
-        for (const clan of enabledClans) {
+        console.log(`[Manual Check] Processing clans ${batchStart + 1}-${batchEnd} of ${totalClans}`);
+
+        sendProgress({
+          type: 'info',
+          message: `Processing clans ${batchStart + 1}-${batchEnd} of ${totalClans}...`,
+          total: totalClans
+        });
+
+        const allResults = [];
+        let totalLeavers = 0;
+        let totalClansChecked = 0;
+
+        for (const clan of batchClans) {
           try {
             console.log(`[Manual Check] Checking clan: [${clan.tag}] ${clan.name}`);
             sendProgress({
               type: 'clan_start',
-              message: `Checking clan [${clan.tag}] ${clan.name}`,
-              current: clansChecked + 1,
-              total: enabledClans.length
+              message: `Checking clan [${clan.tag}] ${clan.name} (${batchStart + totalClansChecked + 1}/${totalClans})`,
+              current: batchStart + totalClansChecked + 1,
+              total: totalClans
             });
 
         // Call the Wargaming API newsfeed endpoint (same as history page)
         const now = new Date();
-        const dateUntil = now.toISOString();
+        // Format date as YYYY-MM-DDTHH:mm:ss+00:00 (no milliseconds, +00:00 instead of Z)
+        const dateUntil = now.toISOString().split('.')[0] + '+00:00';
+
+        // Wargaming API requires offset parameter in seconds
+        // Positive offset for timezones ahead of UTC (e.g., +10800 for UTC+3)
         const offset = Math.abs(now.getTimezoneOffset() * 60);
 
+        // Wargaming requires date_until to be URL-encoded (direct fetch, not through proxy)
         const url = `https://eu.wargaming.net/clans/wot/${clan.clan_id}/newsfeed/api/events/?date_until=${encodeURIComponent(dateUntil)}&offset=${offset}`;
 
         console.log(`[Manual Check] Fetching from proxy:`, url);
@@ -204,14 +253,15 @@ export async function POST() {
           await updateClanStatus(db, clan.clan_id, {
             status: 'error',
             last_checked: new Date().toISOString()
-          });
-          results.push({
+          }, userId);
+          allResults.push({
             clan_id: clan.clan_id,
             clan_tag: clan.tag,
             clan_name: clan.name,
             error: `Failed to fetch clan history (${response.status})`,
             leavers: []
           });
+          totalClansChecked++;
           continue;
         }
 
@@ -244,7 +294,7 @@ export async function POST() {
 
             // Import helper to fetch names directly
             const { getWargamingAPI } = await import('@/lib/api-helpers');
-            const api = getWargamingAPI();
+            const api = await getWargamingAPI();
             if (api) {
               playerNames = await api.getPlayerNames(Array.from(allAccountIds));
             }
@@ -282,14 +332,15 @@ export async function POST() {
         // Sort by timestamp (newest first)
         leavers.sort((a, b) => b.timestamp - a.timestamp);
 
-        results.push({
+        const clanResult = {
           clan_id: clan.clan_id,
           clan_tag: clan.tag,
           clan_name: clan.name,
           leavers: leavers,
           count: leavers.length
-        });
+        };
 
+        allResults.push(clanResult);
         totalLeavers += leavers.length;
 
         // Update clan status
@@ -297,17 +348,17 @@ export async function POST() {
           status: 'active',
           last_checked: new Date().toISOString(),
           last_member_count: leavers.length
-        });
+        }, userId);
 
-            clansChecked++;
+            totalClansChecked++;
             console.log(`[Manual Check] Completed ${clan.tag}: ${leavers.length} leavers`);
             sendProgress({
               type: 'clan_complete',
-              message: `Completed [${clan.tag}]: ${leavers.length} leavers found`,
+              message: `Completed [${clan.tag}]: ${leavers.length} leavers found (${batchStart + totalClansChecked}/${totalClans})`,
               clan_tag: clan.tag,
               leavers_count: leavers.length,
-              current: clansChecked,
-              total: enabledClans.length
+              current: batchStart + totalClansChecked,
+              total: totalClans
             });
 
             // Add delay to respect rate limits (100ms between requests)
@@ -318,24 +369,34 @@ export async function POST() {
         await updateClanStatus(db, clan.clan_id, {
           status: 'error',
           last_checked: new Date().toISOString()
-        });
-        results.push({
+        }, userId);
+        const errorResult = {
           clan_id: clan.clan_id,
           clan_tag: clan.tag,
           clan_name: clan.name,
           error: error instanceof Error ? error.message : 'Unknown error',
           leavers: []
-        });
+        };
+        allResults.push(errorResult);
+        totalClansChecked++;
           }
         }
 
+        const progressMessage = hasMore
+          ? `Batch complete: ${totalClansChecked} clans checked (${batchStart + 1}-${batchEnd} of ${totalClans}). Processing next batch...`
+          : `Manual check complete: ${batchEnd} clans checked, ${totalLeavers} total leavers found.`;
+
         sendProgress({
-          type: 'complete',
+          type: hasMore ? 'batch_complete' : 'complete',
           success: true,
-          message: 'Manual check completed',
-          clans_checked: clansChecked,
+          message: progressMessage,
+          clans_checked: totalClansChecked,
           total_leavers: totalLeavers,
-          results: results
+          results: allResults,
+          total: totalClans,
+          current: batchEnd,
+          hasMore: hasMore,
+          nextBatchStart: hasMore ? batchEnd : undefined
         });
 
         controller.close();

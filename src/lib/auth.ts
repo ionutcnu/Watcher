@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { Kysely } from "kysely";
 import { D1Dialect } from "kysely-d1";
-import { getDB } from "./cloudflare";
+import { getDBSync } from "./cloudflare";
 
 // Better Auth configuration with D1 database using Kysely
 export const auth = betterAuth({
@@ -11,7 +11,7 @@ export const auth = betterAuth({
     // Use a getter function to avoid calling getDB() at module initialization time
     // Wrap D1 with Kysely for proper ORM support
     get db() {
-      const d1 = getDB();
+      const d1 = getDBSync();
       return new Kysely({
         dialect: new D1Dialect({ database: d1 }),
       });

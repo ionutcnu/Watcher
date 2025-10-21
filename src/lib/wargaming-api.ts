@@ -145,12 +145,16 @@ export class WargamingAPI {
 
   async getClanNewsfeed(clanId: number, realm: string = 'eu'): Promise<ClanNewsfeedResponse> {
     try {
-      // Use the exact format from your example
+      // Format date as YYYY-MM-DDTHH:mm:ss+00:00 (no milliseconds, +00:00 instead of Z)
       const now = new Date();
-      const dateUntil = now.toISOString();
-      const offset = now.getTimezoneOffset() * 60; // Convert minutes to seconds
-      
-      const url = `https://${realm}.wargaming.net/clans/wot/${clanId}/newsfeed/api/events/?date_until=${encodeURIComponent(dateUntil)}&offset=${Math.abs(offset)}`;
+      const dateUntil = now.toISOString().split('.')[0] + '+00:00';
+
+      // Wargaming API requires offset parameter in seconds
+      // Positive offset for timezones ahead of UTC (e.g., +10800 for UTC+3)
+      const offset = Math.abs(now.getTimezoneOffset() * 60);
+
+      // Wargaming requires date_until to be URL-encoded
+      const url = `https://${realm}.wargaming.net/clans/wot/${clanId}/newsfeed/api/events/?date_until=${encodeURIComponent(dateUntil)}&offset=${offset}`;
       
       console.log('Fetching clan newsfeed from:', url);
       

@@ -71,6 +71,7 @@ export default function Home() {
     initiator: number;
     initiatorName: string;
   }>>([]);
+  const [lastScannedClan, setLastScannedClan] = useState<{clan_id: number, tag: string, name: string} | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const searchClans = async () => {
@@ -115,6 +116,7 @@ export default function Home() {
       }
 
       setScanResult(result);
+      setLastScannedClan(selectedClan); // Track the last scanned clan
       loadRecentChanges();
 
       // If no changes detected (first scan or no activity), automatically load clan history
@@ -143,14 +145,8 @@ export default function Home() {
 
     setHistoryLoading(true);
     try {
-      // Call the Wargaming API directly
-      const now = new Date();
-      const dateUntil = now.toISOString();
-      const offset = Math.abs(now.getTimezoneOffset() * 60);
-      
-      const url = `https://eu.wargaming.net/clans/wot/${selectedClan.clan_id}/newsfeed/api/events/?date_until=${encodeURIComponent(dateUntil)}&offset=${offset}`;
-      
-      const response = await fetch(`/api/proxy-clan-history?url=${encodeURIComponent(url)}`);
+      // Call our API endpoint which handles the Wargaming request server-side
+      const response = await fetch(`/api/clan-newsfeed?clanId=${selectedClan.clan_id}`);
       const rawData = await response.json();
       
       // Parse the real events from the API
@@ -724,7 +720,19 @@ export default function Home() {
                               </div>
 
                               <p className="text-text-primary text-sm">
-                                {event.description}
+                                <a
+                                  href={`https://tomato.gg/stats/EU/${event.player.account_name}=${event.player.account_id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="hover:text-accent-primary hover:underline transition-colors font-medium"
+                                >
+                                  {event.player.account_name}
+                                </a>
+                                {' '}
+                                {event.type === 'join' && 'has been accepted to the clan.'}
+                                {event.type === 'leave' && 'has been excluded from this clan.'}
+                                {event.type === 'role_change' && event.description.includes('promoted') && 'has been promoted.'}
+                                {event.type === 'role_change' && event.description.includes('demoted') && 'has been demoted.'}
                               </p>
 
                               {event.type === 'role_change' && event.role && (
@@ -752,11 +760,15 @@ export default function Home() {
           </Card>
         )}
 
-        {/* Recent Changes */}
+        {/* Recent Changes - Show changes from last scanned clan */}
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
-              <CardTitle>Recent Changes (7 days)</CardTitle>
+              <CardTitle>
+                {lastScannedClan
+                  ? `Recent Changes - [${lastScannedClan.tag}] ${lastScannedClan.name}`
+                  : 'Recent Changes (7 days)'}
+              </CardTitle>
               <Button
                 onClick={exportToCSV}
                 disabled={!recentChanges.length && !allClanHistory.length}
@@ -768,9 +780,15 @@ export default function Home() {
           </CardHeader>
           <CardContent>
 
-            {recentChanges.length > 0 ? (
+            {(() => {
+              // Filter changes to show only from the last scanned clan
+              const displayChanges = lastScannedClan
+                ? recentChanges.filter(change => change.clan.clan_id === lastScannedClan.clan_id)
+                : recentChanges;
+
+              return displayChanges.length > 0 ? (
               <div className="space-y-3">
-                {recentChanges.map((change, index) => (
+                {displayChanges.slice(0, 10).map((change, index) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, y: 10 }}
@@ -784,7 +802,14 @@ export default function Home() {
                       </Badge>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-text-primary truncate">
-                          {change.player.account_name}
+                          <a
+                            href={`https://tomato.gg/stats/EU/${change.player.account_name}=${change.player.account_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-accent-primary hover:underline transition-colors"
+                          >
+                            {change.player.account_name}
+                          </a>
                         </p>
                         <p className="text-sm text-text-secondary">
                           [{change.clan.tag}] {change.clan.name}
@@ -800,12 +825,15 @@ export default function Home() {
             ) : (
               <div className="text-center py-12">
                 <p className="text-text-secondary">
-                  No recent changes found. Scan some clans to see activity.
+                  {lastScannedClan
+                    ? `No recent changes found for [${lastScannedClan.tag}] ${lastScannedClan.name}.`
+                    : 'No recent changes found. Scan some clans to see activity.'}
                 </p>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            );
+              })()}
+            </CardContent>
+          </Card>
       </div>
     </ModernBackground>
   );

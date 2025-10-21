@@ -6,16 +6,16 @@ export async function getMonitoredClans(db: D1Database, userId?: string): Promis
   // If userId provided, filter by user. Otherwise return all (for backwards compatibility)
   const query = userId
     ? `SELECT
-        clan_id, tag, name, enabled, added_at, last_checked,
+        clan_id, tag, name, enabled, added_at, display_order, last_checked,
         last_member_count, status, error_message, last_members
       FROM monitored_clans
       WHERE user_id = ?
-      ORDER BY added_at DESC`
+      ORDER BY display_order ASC, added_at ASC`
     : `SELECT
-        clan_id, tag, name, enabled, added_at, last_checked,
+        clan_id, tag, name, enabled, added_at, display_order, last_checked,
         last_member_count, status, error_message, last_members
       FROM monitored_clans
-      ORDER BY added_at DESC`;
+      ORDER BY display_order ASC, added_at ASC`;
 
   const stmt = userId
     ? db.prepare(query).bind(userId)
@@ -27,6 +27,7 @@ export async function getMonitoredClans(db: D1Database, userId?: string): Promis
     name: string;
     enabled: number;
     added_at: string;
+    display_order: number | null;
     last_checked: string | null;
     last_member_count: number | null;
     status: 'active' | 'error' | 'never_checked';
@@ -44,6 +45,7 @@ export async function getMonitoredClans(db: D1Database, userId?: string): Promis
     name: row.name,
     enabled: Boolean(row.enabled),
     added_at: row.added_at,
+    display_order: row.display_order ?? undefined,
     last_checked: row.last_checked ?? undefined,
     last_member_count: row.last_member_count ?? undefined,
     status: row.status,
@@ -73,15 +75,16 @@ export async function addMonitoredClan(
 
   const stmt = db.prepare(`
     INSERT INTO monitored_clans (
-      clan_id, tag, name, enabled, added_at, status,
+      clan_id, tag, name, enabled, added_at, display_order, status,
       last_checked, last_member_count, error_message, last_members, user_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     clan.clan_id,
     clan.tag,
     clan.name,
     clan.enabled ? 1 : 0,
     new Date().toISOString(),
+    clan.display_order || null,
     'never_checked',
     clan.last_checked || null,
     clan.last_member_count || null,

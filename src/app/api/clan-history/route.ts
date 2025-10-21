@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const api = getWargamingAPI();
+    const api = await getWargamingAPI();
     if (!api) {
       return apiKeyMissingResponse();
     }

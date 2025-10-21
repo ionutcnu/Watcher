@@ -148,9 +148,13 @@ export function AuthModal({ onClose, defaultMode = 'login' }: AuthModalProps) {
                 </Button>
               </div>
 
-              {/* Registration disabled - admin creates accounts */}
-              {mode === 'register' && (
-                <div className="text-center text-sm">
+              {/* Mode switcher */}
+              <div className="text-center text-sm">
+                {mode === 'login' ? (
+                  <p className="text-text-tertiary">
+                    Don&apos;t have an account? Contact admin for access.
+                  </p>
+                ) : (
                   <button
                     type="button"
                     onClick={() => {
@@ -159,10 +163,10 @@ export function AuthModal({ onClose, defaultMode = 'login' }: AuthModalProps) {
                     }}
                     className="text-accent-primary hover:underline"
                   >
-                    Back to Sign in
+                    Already have an account? Sign in
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </form>
           </CardContent>
         </Card>

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "./auth";
+import { getDB } from "./cloudflare";
 
 /**
  * Authentication middleware for protecting API routes
  * Returns the authenticated user or throws an error
+ * Also checks if user account is active (not pending approval)
  */
 export async function requireAuth(request: NextRequest) {
   try {
@@ -17,6 +19,22 @@ export async function requireAuth(request: NextRequest) {
         { error: "Unauthorized - Please sign in to access this resource" },
         { status: 401 }
       );
+    }
+
+    // Check if user is active (not pending approval)
+    const db = await getDB();
+    if (db) {
+      const user = await db
+        .prepare('SELECT active FROM user WHERE id = ?')
+        .bind(session.user.id)
+        .first<{ active: number }>();
+
+      if (user && user.active === 0) {
+        return NextResponse.json(
+          { error: "Account pending approval - Please wait for admin to activate your account" },
+          { status: 403 }
+        );
+      }
     }
 
     return {

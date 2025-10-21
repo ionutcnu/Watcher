@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { WargamingAPI } from './wargaming-api';
 import { getCloudflareEnv } from './cloudflare';
 
-export function getWargamingAPI(): WargamingAPI | null {
+export async function getWargamingAPI(): Promise<WargamingAPI | null> {
   // Try Cloudflare env first, then fall back to process.env (for local dev)
-  const env = getCloudflareEnv();
+  const env = await getCloudflareEnv();
   const apiKey = env?.WARGAMING_APPLICATION_ID || process.env.WARGAMING_APPLICATION_ID;
 
   if (!apiKey) {

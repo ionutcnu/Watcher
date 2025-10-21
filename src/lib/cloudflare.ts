@@ -12,27 +12,46 @@ export interface CloudflareEnv {
   ASSETS: unknown;
 }
 
-// Get Cloudflare environment using OpenNext's context helper
-export function getCloudflareEnv(): CloudflareEnv | null {
+// Get Cloudflare environment using OpenNext's context helper with async mode
+export async function getCloudflareEnv(): Promise<CloudflareEnv | null> {
   try {
-    // Use OpenNext's getCloudflareContext to access bindings
-    const context = getCloudflareContext();
+    // Use async mode to prevent build-time errors
+    const context = await getCloudflareContext({ async: true });
     if (context?.env) {
       return context.env as CloudflareEnv;
     }
-
-    console.error('[Cloudflare] No context.env available from getCloudflareContext()');
     return null;
   } catch (error) {
-    console.error('[Cloudflare] Error getting Cloudflare context:', error);
+    // Silently return null - context not available (e.g., during build)
     return null;
   }
 }
 
-export function getDB(): D1Database | null {
-  const env = getCloudflareEnv();
-  if (!env?.DB) {
-    console.error('[Cloudflare] Failed to get D1 database binding from context');
-  }
+export async function getDB(): Promise<D1Database | null> {
+  const env = await getCloudflareEnv();
   return env?.DB || null;
+}
+
+// Synchronous version for Better Auth getters (runs at request time, not build time)
+// This will only work after the async context is initialized
+export function getDBSync(): D1Database | null {
+  try {
+    // At request time, context should be available synchronously
+    const context = getCloudflareContext();
+    return (context?.env as CloudflareEnv)?.DB || null;
+  } catch {
+    // During build or if context unavailable, return null
+    return null;
+  }
+}
+
+// Synchronous version for admin checks and other runtime-only functions
+export function getCloudflareEnvSync(): CloudflareEnv | null {
+  try {
+    const context = getCloudflareContext();
+    return (context?.env as CloudflareEnv) || null;
+  } catch {
+    // During build or if context unavailable, return null
+    return null;
+  }
 }
