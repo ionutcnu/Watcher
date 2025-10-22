@@ -2,139 +2,139 @@
 
 # 🎮 WoT Clan Watcher
 
-**Real-time World of Tanks clan monitoring and player tracking system**
+**Enterprise-grade World of Tanks clan monitoring and intelligence platform**
 
-[![Live Demo](https://img.shields.io/badge/Live-clanspy.win-blue?style=for-the-badge)](https://clanspy.win)
-[![Cloudflare](https://img.shields.io/badge/Cloudflare-Workers-orange?style=for-the-badge&logo=cloudflare)](https://workers.cloudflare.com/)
-[![Next.js](https://img.shields.io/badge/Next.js-15.5-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-clanspy.win-4A9EFF?style=for-the-badge&labelColor=1a1b26)](https://clanspy.win)
+[![Cloudflare](https://img.shields.io/badge/☁️_Cloudflare-Workers-F38020?style=for-the-badge&labelColor=1a1b26)](https://workers.cloudflare.com/)
+[![Next.js](https://img.shields.io/badge/⚡_Next.js-15.5-000000?style=for-the-badge&labelColor=1a1b26&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/💎_TypeScript-5.x-3178C6?style=for-the-badge&labelColor=1a1b26&logo=typescript)](https://www.typescriptlang.org/)
 
-Track clan member movements, monitor player statistics, and receive real-time notifications when players join or leave clans.
+**Track clan movements • Analyze player statistics • Get instant alerts**
 
-[Live Demo](https://clanspy.win) · [Report Bug](https://github.com/yourusername/watcher/issues) · [Request Feature](https://github.com/yourusername/watcher/issues)
+[🚀 Live Demo](https://clanspy.win) • [📖 Documentation](#-getting-started) • [💬 Report Issues](https://github.com/ionutcnu/watcher/issues)
 
 </div>
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-### 🔍 Real-Time Monitoring
-- **Automated Clan Scanning** - Continuous monitoring of World of Tanks clan rosters
-- **Change Detection** - Instantly detects when players join or leave monitored clans
-- **Historical Tracking** - Complete history of player movements with timestamps
-- **Bulk Import** - Import multiple clans at once via CSV or manual entry
+<table>
+<tr>
+<td width="50%">
 
-### 📊 Advanced Analytics
-- **Player Statistics** - Integrated with Tomato.gg for WN8, win rate, and battle stats
-- **Recent Performance** - View 60-day player statistics on-demand
-- **Clan History** - Full newsfeed of clan events including role changes
-- **Search & Filter** - Find clans quickly with autocomplete search
+### 🔐 **Multi-User Authentication**
+- **Secure Login System** - Email/password with Better Auth
+- **Admin Dashboard** - User management and system oversight
+- **Role-Based Access** - Admin and user permissions
+- **Session Management** - Secure authentication tokens
 
-### 🔔 Notifications
-- **Discord Integration** - Real-time webhooks for player departures
-- **Customizable Alerts** - Configure which events trigger notifications
-- **Beautiful Embeds** - Rich Discord embeds with player stats and clan info
+### 🔍 **Advanced Monitoring**
+- **Automated Scanning** - Continuous clan roster tracking
+- **Batch Processing** - Check 275+ clans automatically
+- **Smart Batching** - 20 clans/batch to avoid rate limits
+- **Display Order** - Preserve Excel import sequence
 
-### 🎨 Modern UI
-- **Tactical Military Theme** - Immersive World of Tanks-inspired design
-- **Responsive Design** - Works seamlessly on desktop and mobile
-- **Interactive Components** - Smooth animations and transitions
-- **Real-time Updates** - Live data refresh without page reload
+</td>
+<td width="50%">
 
----
+### 📊 **Player Analytics**
+- **60-Day Statistics** - Recent performance metrics
+- **WN8 Integration** - Tomato.gg advanced stats
+- **On-Demand Loading** - Stats fetch when needed
+- **Historical Tracking** - Complete movement history
 
-## 🛠️ Tech Stack
+### 🎯 **Bulk Operations**
+- **CSV Import** - Import hundreds of clans at once
+- **Bulk Actions** - Enable/disable/remove multiple clans
+- **Progress Tracking** - Real-time batch progress
+- **Error Handling** - Graceful failure recovery
 
-### Frontend
-| Technology | Purpose | Version |
-|------------|---------|---------|
-| **[Next.js](https://nextjs.org/)** | React framework with SSR & API routes | 15.5.5 |
-| **[React](https://react.dev/)** | UI component library | 19.1.0 |
-| **[TypeScript](https://www.typescriptlang.org/)** | Type-safe JavaScript | 5.x |
-| **[Tailwind CSS](https://tailwindcss.com/)** | Utility-first CSS framework | 4.x |
-| **[Framer Motion](https://www.framer.com/motion/)** | Animation library | 12.x |
-| **[GSAP](https://greensock.com/gsap/)** | High-performance animations | 3.x |
-| **[Lucide React](https://lucide.dev/)** | Modern icon library | Latest |
-
-### Backend & Infrastructure
-| Technology | Purpose | Version |
-|------------|---------|---------|
-| **[Cloudflare Workers](https://workers.cloudflare.com/)** | Serverless edge computing | Latest |
-| **[Cloudflare D1](https://developers.cloudflare.com/d1/)** | Serverless SQLite database | Latest |
-| **[OpenNext](https://opennext.js.org/)** | Next.js adapter for Cloudflare | 1.11.0 |
-| **[Wrangler](https://developers.cloudflare.com/workers/wrangler/)** | Cloudflare CLI tool | 4.43.0 |
-
-### APIs & Integrations
-| Service | Purpose | Documentation |
-|---------|---------|---------------|
-| **Wargaming API** | World of Tanks data (clans, players) | [API Docs](https://developers.wargaming.net/) |
-| **Tomato.gg API** | Advanced player statistics (WN8, recent stats) | [API Docs](https://tomato.gg/api) |
-| **Discord Webhooks** | Real-time notifications | [Webhook Guide](https://discord.com/developers/docs/resources/webhook) |
-
-### Database Schema
-**5 Tables in Cloudflare D1:**
-- `snapshots` - Clan roster snapshots with timestamps
-- `changes` - Player join/leave events tracking
-- `monitored_clans` - Active clan monitoring configuration
-- `monitoring_config` - Global notification settings
-- `exclusion_alerts` - Player departure alert history
+</td>
+</tr>
+</table>
 
 ---
 
-## 🚀 Getting Started
+## 🎨 Modern Interface
 
-### Prerequisites
-```bash
-# Node.js 18+ and npm
-node --version  # v18.x or higher
-npm --version   # 9.x or higher
+- **🎭 Tactical Military Theme** - Immersive WoT-inspired design with hexagonal patterns
+- **⚡ Smooth Animations** - Framer Motion & GSAP for fluid interactions
+- **📱 Fully Responsive** - Perfect experience on all devices
+- **🌙 Dark Mode Optimized** - Easy on the eyes for extended use
+- **🔄 Real-Time Updates** - Live data without page refresh
 
-# Cloudflare account (free tier works)
-# Wargaming API key (free from developers.wargaming.net)
+---
+
+## 🛠️ Technology Stack
+
+### **Frontend**
+```
+Next.js 15.5  •  React 19  •  TypeScript 5  •  Tailwind CSS 4
+Framer Motion  •  GSAP  •  Lucide Icons  •  Radix UI
 ```
 
-### Installation
+### **Backend & Infrastructure**
+```
+Cloudflare Workers  •  Cloudflare D1 (SQLite)  •  OpenNext
+Better Auth  •  Wrangler 4.43  •  Edge Runtime
+```
 
-1. **Clone the repository**
+### **APIs & Integrations**
+```
+Wargaming API  •  Tomato.gg  •  Discord Webhooks
+```
+
+### **Database Schema** (6 Tables)
+| Table | Purpose |
+|-------|---------|
+| `user` | User accounts and authentication |
+| `session` | Active user sessions |
+| `monitored_clans` | Clan monitoring config (multi-user) |
+| `snapshots` | Historical clan rosters |
+| `changes` | Player movement tracking |
+| `monitoring_config` | Global notification settings |
+
+---
+
+## 🚀 Quick Start
+
+### **Prerequisites**
+- Node.js 18+ and npm
+- Cloudflare account (free tier works)
+- Wargaming API key ([Get one free](https://developers.wargaming.net/))
+
+### **Installation**
+
 ```bash
-git clone https://github.com/yourusername/watcher.git
+# Clone repository
+git clone https://github.com/ionutcnu/watcher.git
 cd watcher
-```
 
-2. **Install dependencies**
-```bash
+# Install dependencies
 npm install
+
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your API keys
 ```
 
-3. **Set up environment variables**
-```bash
-# Create .env.local file
-WARGAMING_APPLICATION_ID=your_api_key_here
-WARGAMING_REALM=eu
-WARGAMING_API_BASE_URL=https://api.worldoftanks.eu
-NEXT_PUBLIC_APP_NAME="WoT Clan Watcher"
-```
+### **Database Setup**
 
-4. **Initialize Cloudflare D1 database**
 ```bash
 # Create D1 database
 npx wrangler d1 create wot-watcher-db
 
 # Update wrangler.toml with your database_id
-# Then apply schema
-npx wrangler d1 execute wot-watcher-db --remote --file=schema.sql
+
+# Initialize database (run migrations manually)
+# SQL files are in your local directory only
 ```
 
-5. **Configure Cloudflare secrets**
-```bash
-npx wrangler secret put WARGAMING_APPLICATION_ID
-# Paste your API key when prompted
-```
-
-### Development
+### **Development**
 
 ```bash
-# Run development server
+# Start dev server
 npm run dev
 
 # Build for production
@@ -143,90 +143,105 @@ npm run build:worker
 # Deploy to Cloudflare
 npm run deploy
 
-# View live logs
+# Watch logs
 npx wrangler tail
 ```
 
 ---
 
-## 📖 Usage
+## 📖 Usage Guide
 
-### Adding Clans to Monitor
+### **Adding Clans**
 
-1. Navigate to the **Monitoring** page
-2. Click **Bulk Import** or add clans individually
-3. Enter clan tags (e.g., `FAM`, `FAME`, `FAM-1`)
-4. Click **Import** - clans will be added to monitoring list
+1. **Navigate to Monitoring** → Click "Bulk Import"
+2. **Upload Excel/CSV** or paste clan tags
+3. **Import** - Clans added in same order as Excel
+4. **Enable/Disable** - Toggle monitoring per clan
 
-### Viewing Changes
+### **Manual Scanning**
 
-- **Home Page** - View recent player movements across all monitored clans
-- **Filter by Date** - Select date range to view historical changes
-- **Search** - Find specific clans or players
-- **Export** - Download changes as CSV/Excel for analysis
+```
+Click "Run Manual Check" → Automatic batch processing
+├── Processes 20 clans per batch
+├── Shows real-time progress
+├── Displays results in Excel order
+└── On-demand stats loading
+```
 
-### Manual Scan
+### **View Changes**
 
-1. Go to **Monitoring** page
-2. Click **Manual Check**
-3. Watch real-time progress as each clan is scanned
-4. View leavers with on-demand statistics
+- **Home Dashboard** - Recent movements across all clans
+- **Filter by Date** - Custom date range selection
+- **Last Scanned** - View only most recent scan results
+- **Export Data** - Download as CSV/Excel
 
-### Discord Notifications
+### **Admin Panel**
 
-1. Create a Discord webhook in your server settings
-2. Navigate to **Monitoring Config**
-3. Paste webhook URL and configure notification types
-4. Save - alerts will be sent automatically
+```
+Admin Dashboard → Manage Users
+├── View all registered users
+├── Activate/deactivate accounts
+├── Monitor system activity
+└── Configure global settings
+```
 
 ---
 
 ## 🏗️ Architecture
 
-### System Design
+```mermaid
+graph LR
+    A[Browser] -->|HTTPS| B[Cloudflare Edge]
+    B -->|API Routes| C[Next.js Server]
+    C -->|Query| D[D1 Database]
+    C -->|Fetch| E[Wargaming API]
+    C -->|Stats| F[Tomato.gg]
+    C -->|Notify| G[Discord]
+
+    style A fill:#4A9EFF
+    style B fill:#F38020
+    style C fill:#000000
+    style D fill:#FFA500
 ```
-┌─────────────┐      ┌──────────────────┐      ┌─────────────┐
-│   Browser   │ ───> │ Cloudflare Edge  │ ───> │ Wargaming   │
-│   (React)   │      │   (Next.js API)  │      │     API     │
-└─────────────┘      └──────────────────┘      └─────────────┘
-                              │
-                              ├──> Cloudflare D1 Database
-                              │
-                              └──> Discord Webhooks
-```
 
-### Key Components
+### **Key API Endpoints**
 
-**Frontend Routes:**
-- `/` - Main dashboard with change history
-- `/monitoring` - Clan management and manual scanning
-- `/api/*` - REST API endpoints
-
-**API Routes:**
-- `/api/scan-clan` - Scan single clan for changes
-- `/api/changes` - Get recent player movements
-- `/api/monitored-clans` - CRUD for monitored clans
-- `/api/bulk-import` - Import multiple clans
-- `/api/clan-history` - Get clan newsfeed
-- `/api/player-stats` - Fetch player statistics
-- `/api/discord-notify` - Send Discord notifications
-
-### Database Operations
-All database operations use prepared statements with proper SQL injection protection:
-```typescript
-// Example: Get recent changes
-const changes = await db.prepare(`
-  SELECT * FROM changes
-  WHERE timestamp >= ?
-  ORDER BY timestamp DESC
-`).bind(cutoffTimestamp).all();
-```
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/auth/[...all]` | ALL | Authentication (Better Auth) |
+| `/api/admin/users` | GET/POST | User management |
+| `/api/admin/settings` | GET/POST | System configuration |
+| `/api/monitored-clans` | GET/POST | Clan CRUD operations |
+| `/api/bulk-import` | POST | Batch clan import |
+| `/api/monitoring/manual-check` | POST | Manual scan (batched) |
+| `/api/clan-newsfeed` | GET | Clan events (bypass proxy) |
+| `/api/player-stats` | POST | Tomato.gg statistics |
+| `/api/changes` | GET | Player movement history |
+| `/api/discord-notify` | POST | Send webhook notifications |
 
 ---
 
-## 🔧 Configuration
+## ⚙️ Configuration
 
-### Wrangler Configuration (`wrangler.toml`)
+### **Environment Variables**
+
+```env
+# Wargaming API
+WARGAMING_APPLICATION_ID=your_api_key
+WARGAMING_REALM=eu
+WARGAMING_API_BASE_URL=https://api.worldoftanks.eu
+
+# Better Auth
+BETTER_AUTH_SECRET=your_secret_key_here
+BETTER_AUTH_URL=https://clanspy.win
+
+# App Config
+NEXT_PUBLIC_APP_NAME="WoT Clan Watcher"
+NEXT_PUBLIC_APP_URL=https://clanspy.win
+```
+
+### **Wrangler Configuration**
+
 ```toml
 name = "wot-clan-watcher"
 compatibility_date = "2025-01-16"
@@ -240,68 +255,99 @@ database_id = "your-database-id"
 [vars]
 WARGAMING_REALM = "eu"
 WARGAMING_API_BASE_URL = "https://api.worldoftanks.eu"
-```
-
-### Custom Domain Setup
-1. Add domain to Cloudflare DNS
-2. Update `wrangler.toml`:
-```toml
-[[routes]]
-pattern = "clanspy.win"
-custom_domain = true
+NEXT_PUBLIC_APP_NAME = "WoT Clan Watcher"
+NEXT_PUBLIC_APP_URL = "https://clanspy.win"
 ```
 
 ---
 
 ## 📊 Performance
 
-- **⚡ Edge Computing** - Sub-50ms response times via Cloudflare's global network
-- **🌐 Global CDN** - Static assets served from 300+ data centers
-- **💾 D1 Database** - SQLite at the edge with automatic replication
-- **🔄 Efficient Caching** - Smart caching for repeated API calls
-- **📦 Small Bundle** - Optimized production build < 7MB
+| Metric | Value |
+|--------|-------|
+| **Response Time** | < 50ms (edge computing) |
+| **Global CDN** | 300+ data centers |
+| **Database** | SQLite at the edge |
+| **Bundle Size** | < 7.5 MB optimized |
+| **Batch Size** | 20 clans per request |
+| **Max Clans** | Unlimited (automatic batching) |
+
+---
+
+## 🎯 Roadmap
+
+- [x] Multi-user authentication system
+- [x] Client-side automatic batching
+- [x] Display order preservation
+- [x] 60-day statistics integration
+- [x] Admin panel for user management
+- [x] Bulk operations (enable/disable/remove)
+- [ ] Advanced filtering and search
+- [ ] Customizable dashboards
+- [ ] Email notifications
+- [ ] API rate limiting
+- [ ] Player comparison tools
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please follow these steps:
+We welcome contributions! Here's how:
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+4. **Push** to branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+### **Development Guidelines**
+
+- Follow TypeScript best practices
+- Use Tailwind CSS for styling
+- Write descriptive commit messages
+- Test on Cloudflare Workers before PR
+- Update README for new features
 
 ---
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** - see [LICENSE](LICENSE) for details.
 
 ---
 
 ## 🙏 Acknowledgments
 
-- **Wargaming.net** - For providing the World of Tanks API
-- **Tomato.gg** - For advanced player statistics
-- **Cloudflare** - For edge computing and D1 database
-- **OpenNext** - For making Next.js work on Cloudflare Workers
+**Built with:**
+- [Wargaming.net](https://developers.wargaming.net/) - World of Tanks API
+- [Tomato.gg](https://tomato.gg/) - Advanced player statistics
+- [Cloudflare](https://cloudflare.com/) - Edge computing & D1 database
+- [OpenNext](https://opennext.js.org/) - Next.js on Cloudflare Workers
+- [Better Auth](https://www.better-auth.com/) - Secure authentication
+
+**Special thanks** to the World of Tanks community for feedback and support!
 
 ---
 
-## 📧 Contact
+## 📧 Links
 
-**Project Link:** [https://github.com/yourusername/watcher](https://github.com/yourusername/watcher)
+**🌐 Live Application:** [clanspy.win](https://clanspy.win)
 
-**Live Demo:** [https://clanspy.win](https://clanspy.win)
+**📚 API Documentation:** Wargaming API • Tomato.gg API
+
+**💬 Support:** [Open an Issue](https://github.com/ionutcnu/watcher/issues)
 
 ---
 
 <div align="center">
 
-Made with ❤️ for the World of Tanks community
+### Made with ❤️ for the World of Tanks Community
 
-**[⬆ back to top](#-wot-clan-watcher)**
+**⭐ Star this repo if you find it useful!**
+
+[![GitHub stars](https://img.shields.io/github/stars/ionutcnu/watcher?style=social)](https://github.com/ionutcnu/watcher)
+[![GitHub forks](https://img.shields.io/github/forks/ionutcnu/watcher?style=social)](https://github.com/ionutcnu/watcher/fork)
+
+[⬆ Back to Top](#-wot-clan-watcher)
 
 </div>
