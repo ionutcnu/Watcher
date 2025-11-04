@@ -5,6 +5,11 @@ compatibility_date = "2025-01-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
+# Cron triggers for automated monitoring
+# Run every 30 minutes to check clans automatically
+[triggers]
+crons = ["*/30 * * * *"]
+
 [[routes]]
 pattern = "clanspy.win"
 custom_domain = true

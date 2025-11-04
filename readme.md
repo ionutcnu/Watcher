@@ -30,10 +30,12 @@
 - **Session Management** - Secure authentication tokens
 
 ### 🔍 **Advanced Monitoring**
-- **Automated Scanning** - Continuous clan roster tracking
+- **Automated Scanning** - Continuous clan roster tracking via cron (every 30 min)
+- **Manual Checks** - On-demand scanning with real-time progress
 - **Batch Processing** - Check 275+ clans automatically
 - **Smart Batching** - 20 clans/batch to avoid rate limits
 - **Display Order** - Preserve Excel import sequence
+- **Discord Alerts** - Automatic notifications for player movements
 
 </td>
 <td width="50%">
@@ -168,6 +170,33 @@ Click "Run Manual Check" → Automatic batch processing
 └── On-demand stats loading
 ```
 
+### **Automated Monitoring (NEW!)**
+
+The system now runs **automated scheduled monitoring** every 30 minutes:
+
+```
+Cloudflare Workers Cron → Automatic clan checks
+├── Runs every 30 minutes (configurable in wrangler.toml)
+├── Checks all enabled clans across all users
+├── Respects check_interval setting (hourly/daily)
+├── Sends Discord notifications automatically
+└── No manual intervention required
+```
+
+**Configuration:**
+- Navigate to Monitoring Config to set:
+  - Check interval: Hourly or Daily
+  - Discord webhook URL for alerts
+  - Notification types (joins/leaves/role changes)
+
+**How it works:**
+1. Cron trigger fires every 30 minutes
+2. System checks `check_interval` and `last_global_check`
+3. If interval has passed, processes all enabled clans in batches
+4. Detects player movements (joins/leaves)
+5. Sends Discord notifications if configured
+6. Updates `last_global_check` timestamp
+
 ### **View Changes**
 
 - **Home Dashboard** - Recent movements across all clans
@@ -247,6 +276,10 @@ name = "wot-clan-watcher"
 compatibility_date = "2025-01-16"
 compatibility_flags = ["nodejs_compat"]
 
+# Cron triggers for automated monitoring (every 30 minutes)
+[triggers]
+crons = ["*/30 * * * *"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "wot-watcher-db"
@@ -258,6 +291,13 @@ WARGAMING_API_BASE_URL = "https://api.worldoftanks.eu"
 NEXT_PUBLIC_APP_NAME = "WoT Clan Watcher"
 NEXT_PUBLIC_APP_URL = "https://clanspy.win"
 ```
+
+**Customizing Cron Schedule:**
+- `*/30 * * * *` - Every 30 minutes (default)
+- `0 * * * *` - Every hour
+- `0 */2 * * *` - Every 2 hours
+- `0 0 * * *` - Once daily at midnight
+- See [Cloudflare Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/) for more options
 
 ---
 
@@ -282,6 +322,8 @@ NEXT_PUBLIC_APP_URL = "https://clanspy.win"
 - [x] 60-day statistics integration
 - [x] Admin panel for user management
 - [x] Bulk operations (enable/disable/remove)
+- [x] **Automated scheduled monitoring (Cloudflare Workers Cron)**
+- [x] **Discord webhook notifications**
 - [ ] Advanced filtering and search
 - [ ] Customizable dashboards
 - [ ] Email notifications
