@@ -49,7 +49,7 @@ async function fetchTomatoStats(
   days: number = 60
 ): Promise<TomatoPlayerStats | null> {
   try {
-    const url = `https://api.tomato.gg/dev/api-v2/player/recents/${region}/${accountId}?cache=false&days=1,3,7,30,60&battles=1000,100`;
+    const url = `https://api.tomato.gg/api/player/recents/${region}/${accountId}?cache=false&days=1,3,7,30,60&battles=1000,100`;
 
     console.log(`[Tomato] Fetching stats for ${accountId} from ${url}`);
 
