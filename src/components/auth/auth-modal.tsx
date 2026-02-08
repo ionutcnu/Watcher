@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { signIn, signUp } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ interface AuthModalProps {
 }
 
 export function AuthModal({ onClose, defaultMode = 'login' }: AuthModalProps) {
+  const router = useRouter();
   const [mode, setMode] = useState<'login' | 'register'>(defaultMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,7 +41,7 @@ export function AuthModal({ onClose, defaultMode = 'login' }: AuthModalProps) {
         } else {
           // Registration successful, close modal
           onClose();
-          window.location.reload(); // Reload to update session
+          router.refresh();
         }
       } else {
         const result = await signIn.email({
@@ -52,7 +54,7 @@ export function AuthModal({ onClose, defaultMode = 'login' }: AuthModalProps) {
         } else {
           // Login successful, close modal
           onClose();
-          window.location.reload(); // Reload to update session
+          router.refresh();
         }
       }
     } catch (err) {

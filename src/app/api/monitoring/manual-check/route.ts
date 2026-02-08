@@ -1,24 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getMonitoredClans, updateClanStatus } from '@/lib/monitoring-storage';
-import { getDB } from '@/lib/cloudflare';
-import { requireAuth } from '@/lib/auth-middleware';
-
-interface TomatoPlayerStats {
-  battles: number;
-  avgTier: number;
-  wn8: number;
-  wnx: number;
-  wins: number;
-  winrate: number;
-  survived: number;
-  survivalRate: number;
-  damage: number;
-  avgDamage: number;
-  damageRatio: number;
-  frags: number;
-  avgFrags: number;
-  kdRatio: number;
-}
+import { withDB, withAuth, withWargamingAPI } from '@/lib/api-guards';
+import type { TomatoPlayerStats } from '@/lib/tomato-api';
 
 interface ProgressData {
   type: string;
@@ -43,97 +26,15 @@ interface ProgressData {
   }>;
 }
 
-async function fetchTomatoStats(
-  region: string,
-  accountId: number,
-  days: number = 60
-): Promise<TomatoPlayerStats | null> {
-  try {
-    const url = `https://api.tomato.gg/api/player/recents/${region}/${accountId}?cache=false&days=1,3,7,30,60&battles=1000,100`;
-
-    console.log(`[Tomato] Fetching stats for ${accountId} from ${url}`);
-
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json',
-      }
-    });
-
-    if (!response.ok) {
-      console.error(`[Tomato] HTTP ${response.status} for account ${accountId}`);
-      return null;
-    }
-
-    const data = await response.json();
-    console.log(`[Tomato] Full response structure for ${accountId}:`, {
-      hasData: !!data.data,
-      dataKeys: data?.data ? Object.keys(data.data) : [],
-      hasDays: !!data?.data?.days,
-      daysKeys: data?.data?.days ? Object.keys(data.data.days) : [],
-      daysType: data?.data?.days ? typeof data.data.days : 'undefined',
-      requestedDayKey: days,
-      has60DayData: !!data?.data?.days?.[60],
-      has60DayStringData: !!data?.data?.days?.['60']
-    });
-
-    // The structure is data.data.days[60], not data[60]
-    const stats60Days = data?.data?.days?.[days];
-
-    if (!stats60Days?.overall) {
-      console.log(`[Tomato] No 60-day stats found for ${accountId}.`);
-      console.log(`[Tomato] data.data.days keys:`, Object.keys(data?.data?.days || {}));
-      console.log(`[Tomato] Attempted to access days[${days}], got:`, stats60Days);
-      return null;
-    }
-
-    console.log(`[Tomato] Successfully parsed 60-day stats for ${accountId}`);
-
-
-    const overall = stats60Days.overall;
-    const ratios = stats60Days.ratios;
-
-    const battles = overall.battles || 0;
-    const wins = overall.wins || 0;
-    const survived = overall.totalSurvived || 0;
-    const damage = overall.totalDamage || 0;
-    const frags = overall.totalFrags || 0;
-
-    return {
-      battles,
-      avgTier: overall.tier || 0,
-      wn8: ratios?.wn8 || overall.wn8 || 0,
-      wnx: overall.wnx || 0,
-      wins,
-      winrate: battles > 0 ? (wins / battles) * 100 : 0,
-      survived,
-      survivalRate: battles > 0 ? (survived / battles) * 100 : 0,
-      damage,
-      avgDamage: battles > 0 ? damage / battles : 0,
-      damageRatio: ratios?.rDMG || 0,
-      frags,
-      avgFrags: battles > 0 ? frags / battles : 0,
-      kdRatio: (battles - survived) > 0 ? frags / (battles - survived) : 0,
-    };
-  } catch (error) {
-    console.error(`[Tomato API] Error fetching stats for ${accountId}:`, error);
-    return null;
-  }
-}
-
 export async function POST(request: NextRequest) {
-  // Require authentication
-  const authResult = await requireAuth(request);
-  if (authResult instanceof NextResponse) {
-    return authResult; // Return 401 error
-  }
+  const auth = await withAuth(request);
+  if (auth.error) return auth.error;
 
-  const userId = authResult.user.id;
+  const userId = auth.user.id;
   const encoder = new TextEncoder();
 
-  // Parse request body to get batch parameters
   let batchStart = 0;
-  let batchSize = 20; // Process 20 clans per batch to stay within Cloudflare limits
+  let batchSize = 20;
 
   try {
     const body = await request.json();
@@ -145,37 +46,25 @@ export async function POST(request: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      // Helper function to send progress updates
       const sendProgress = (data: ProgressData) => {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       };
 
       try {
-        console.log(`[Manual Check] Starting manual check batch (start: ${batchStart}, size: ${batchSize})...`);
         sendProgress({ type: 'start', message: 'Starting manual check...' });
 
-        const db = await getDB();
-        if (!db) {
-          console.error('[Manual Check] D1 database binding not found');
-          sendProgress({
-            type: 'error',
-            message: 'Database configuration error',
-            success: false,
-            error: 'Database configuration error'
-          });
+        const dbResult = await withDB();
+        if (dbResult.error) {
+          sendProgress({ type: 'error', message: 'Database configuration error', success: false, error: 'Database configuration error' });
           controller.close();
           return;
         }
+        const { db } = dbResult;
 
         const monitoredClans = await getMonitoredClans(db, userId);
-        console.log('[Manual Check] Total monitored clans:', monitoredClans.length);
-
         const enabledClans = monitoredClans.filter(clan => clan.enabled);
-        console.log('[Manual Check] Enabled clans:', enabledClans.length);
 
-        // Sort by display_order (Excel import order) to match monitoring list
         enabledClans.sort((a, b) => {
-          // Clans without display_order go to the end
           if (a.display_order === undefined && b.display_order === undefined) return 0;
           if (a.display_order === undefined) return 1;
           if (b.display_order === undefined) return -1;
@@ -184,26 +73,18 @@ export async function POST(request: NextRequest) {
 
         if (enabledClans.length === 0) {
           sendProgress({
-            type: 'complete',
-            message: 'No enabled clans to monitor',
-            success: false,
-            error: 'No enabled clans to monitor',
-            total: 0,
-            clans_checked: 0,
-            total_leavers: 0,
-            results: []
+            type: 'complete', message: 'No enabled clans to monitor',
+            success: false, error: 'No enabled clans to monitor',
+            total: 0, clans_checked: 0, total_leavers: 0, results: []
           });
           controller.close();
           return;
         }
 
-        // Get the batch of clans to process
         const batchEnd = Math.min(batchStart + batchSize, enabledClans.length);
         const batchClans = enabledClans.slice(batchStart, batchEnd);
         const totalClans = enabledClans.length;
         const hasMore = batchEnd < totalClans;
-
-        console.log(`[Manual Check] Processing clans ${batchStart + 1}-${batchEnd} of ${totalClans}`);
 
         sendProgress({
           type: 'info',
@@ -217,7 +98,6 @@ export async function POST(request: NextRequest) {
 
         for (const clan of batchClans) {
           try {
-            console.log(`[Manual Check] Checking clan: [${clan.tag}] ${clan.name}`);
             sendProgress({
               type: 'clan_start',
               message: `Checking clan [${clan.tag}] ${clan.name} (${batchStart + totalClansChecked + 1}/${totalClans})`,
@@ -225,160 +105,108 @@ export async function POST(request: NextRequest) {
               total: totalClans
             });
 
-        // Call the Wargaming API newsfeed endpoint (same as history page)
-        const now = new Date();
-        // Format date as YYYY-MM-DDTHH:mm:ss+00:00 (no milliseconds, +00:00 instead of Z)
-        const dateUntil = now.toISOString().split('.')[0] + '+00:00';
+            const now = new Date();
+            const dateUntil = now.toISOString().split('.')[0] + '+00:00';
+            const offset = Math.abs(now.getTimezoneOffset() * 60);
+            const url = `https://eu.wargaming.net/clans/wot/${clan.clan_id}/newsfeed/api/events/?date_until=${encodeURIComponent(dateUntil)}&offset=${offset}`;
 
-        // Wargaming API requires offset parameter in seconds
-        // Positive offset for timezones ahead of UTC (e.g., +10800 for UTC+3)
-        const offset = Math.abs(now.getTimezoneOffset() * 60);
+            const response = await fetch(url, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'application/json',
+                'Accept-Language': 'en-US,en;q=0.9',
+              }
+            });
 
-        // Wargaming requires date_until to be URL-encoded (direct fetch, not through proxy)
-        const url = `https://eu.wargaming.net/clans/wot/${clan.clan_id}/newsfeed/api/events/?date_until=${encodeURIComponent(dateUntil)}&offset=${offset}`;
-
-        console.log(`[Manual Check] Fetching from proxy:`, url);
-
-        // Call the Wargaming API directly instead of using proxy
-        const response = await fetch(url, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Accept': 'application/json',
-            'Accept-Language': 'en-US,en;q=0.9',
-          }
-        });
-
-        if (!response.ok) {
-          console.error(`[Manual Check] Failed to fetch for clan ${clan.tag}:`, response.status);
-          await updateClanStatus(db, clan.clan_id, {
-            status: 'error',
-            last_checked: new Date().toISOString()
-          }, userId);
-          allResults.push({
-            clan_id: clan.clan_id,
-            clan_tag: clan.tag,
-            clan_name: clan.name,
-            error: `Failed to fetch clan history (${response.status})`,
-            leavers: []
-          });
-          totalClansChecked++;
-          continue;
-        }
-
-        const rawData = await response.json();
-        console.log(`[Manual Check] Got data for ${clan.tag}, items:`, rawData?.items?.length || 0);
-
-        // Parse events for leave_clan only (same logic as history page)
-        const leavers: Array<{
-          player: { account_id: number; account_name: string };
-          timestamp: number;
-          date: string;
-          time: string;
-          description: string;
-          stats: TomatoPlayerStats | null;
-        }> = [];
-        const allAccountIds = new Set<number>();
-
-        if (rawData?.items && Array.isArray(rawData.items)) {
-          // First pass: collect account IDs for leave events
-          for (const item of rawData.items) {
-            if (item.subtype === 'leave_clan' && item.accounts_ids) {
-              item.accounts_ids.forEach((id: number) => allAccountIds.add(id));
-            }
-          }
-
-          // Fetch player names for all account IDs
-          let playerNames: Record<number, string> = {};
-          if (allAccountIds.size > 0) {
-            console.log(`[Manual Check] Fetching names for ${allAccountIds.size} accounts`);
-
-            // Import helper to fetch names directly
-            const { getWargamingAPI } = await import('@/lib/api-helpers');
-            const api = await getWargamingAPI();
-            if (api) {
-              playerNames = await api.getPlayerNames(Array.from(allAccountIds));
+            if (!response.ok) {
+              await updateClanStatus(db, clan.clan_id, {
+                status: 'error', last_checked: new Date().toISOString()
+              }, userId);
+              allResults.push({
+                clan_id: clan.clan_id, clan_tag: clan.tag, clan_name: clan.name,
+                error: `Failed to fetch clan history (${response.status})`, leavers: []
+              });
+              totalClansChecked++;
+              continue;
             }
 
-            console.log(`[Manual Check] Got ${Object.keys(playerNames).length} player names`);
+            const rawData = await response.json();
 
-            // Second pass: build leave events with names
-            for (const item of rawData.items) {
-              if (item.subtype === 'leave_clan' && item.accounts_ids) {
-                const timestamp = new Date(item.created_at).getTime() / 1000;
+            const leavers: Array<{
+              player: { account_id: number; account_name: string };
+              timestamp: number;
+              date: string;
+              time: string;
+              description: string;
+              stats: TomatoPlayerStats | null;
+            }> = [];
+            const allAccountIds = new Set<number>();
 
-                for (const accountId of item.accounts_ids) {
-                  const playerName = playerNames[accountId] || `Player_${accountId}`;
+            if (rawData?.items && Array.isArray(rawData.items)) {
+              for (const item of rawData.items) {
+                if (item.subtype === 'leave_clan' && item.accounts_ids) {
+                  item.accounts_ids.forEach((id: number) => allAccountIds.add(id));
+                }
+              }
 
-                  leavers.push({
-                    player: {
-                      account_id: accountId,
-                      account_name: playerName
-                    },
-                    timestamp: timestamp,
-                    date: new Date(timestamp * 1000).toISOString().split('T')[0],
-                    time: new Date(timestamp * 1000).toLocaleString(),
-                    description: `Player ${playerName} has been excluded from this clan.`,
-                    stats: null // Will be fetched after
-                  });
+              if (allAccountIds.size > 0) {
+                const apiResult = await withWargamingAPI();
+                let playerNames: Record<number, string> = {};
+                if (!apiResult.error) {
+                  playerNames = await apiResult.api.getPlayerNames(Array.from(allAccountIds));
+                }
+
+                for (const item of rawData.items) {
+                  if (item.subtype === 'leave_clan' && item.accounts_ids) {
+                    const timestamp = new Date(item.created_at).getTime() / 1000;
+
+                    for (const accountId of item.accounts_ids) {
+                      const playerName = playerNames[accountId] || `Player_${accountId}`;
+                      leavers.push({
+                        player: { account_id: accountId, account_name: playerName },
+                        timestamp,
+                        date: new Date(timestamp * 1000).toISOString().split('T')[0],
+                        time: new Date(timestamp * 1000).toLocaleString(),
+                        description: `Player ${playerName} has been excluded from this clan.`,
+                        stats: null
+                      });
+                    }
+                  }
                 }
               }
             }
-          }
-        }
 
-            // Stats will be fetched on-demand when user expands the clan
-            console.log(`[Manual Check] Found ${leavers.length} leavers from [${clan.tag}] (stats will load on-demand)`);
+            leavers.sort((a, b) => b.timestamp - a.timestamp);
 
-        // Sort by timestamp (newest first)
-        leavers.sort((a, b) => b.timestamp - a.timestamp);
+            allResults.push({
+              clan_id: clan.clan_id, clan_tag: clan.tag, clan_name: clan.name,
+              leavers, count: leavers.length
+            });
+            totalLeavers += leavers.length;
 
-        const clanResult = {
-          clan_id: clan.clan_id,
-          clan_tag: clan.tag,
-          clan_name: clan.name,
-          leavers: leavers,
-          count: leavers.length
-        };
-
-        allResults.push(clanResult);
-        totalLeavers += leavers.length;
-
-        // Update clan status
-        await updateClanStatus(db, clan.clan_id, {
-          status: 'active',
-          last_checked: new Date().toISOString(),
-          last_member_count: leavers.length
-        }, userId);
+            await updateClanStatus(db, clan.clan_id, {
+              status: 'active', last_checked: new Date().toISOString(),
+              last_member_count: leavers.length
+            }, userId);
 
             totalClansChecked++;
-            console.log(`[Manual Check] Completed ${clan.tag}: ${leavers.length} leavers`);
             sendProgress({
               type: 'clan_complete',
               message: `Completed [${clan.tag}]: ${leavers.length} leavers found (${batchStart + totalClansChecked}/${totalClans})`,
-              clan_tag: clan.tag,
-              leavers_count: leavers.length,
-              current: batchStart + totalClansChecked,
-              total: totalClans
+              clan_tag: clan.tag, leavers_count: leavers.length,
+              current: batchStart + totalClansChecked, total: totalClans
             });
 
-            // Add delay to respect rate limits (100ms between requests)
             await new Promise(resolve => setTimeout(resolve, 100));
-
-      } catch (error) {
-        console.error(`[Manual Check] Error checking clan ${clan.tag}:`, error);
-        await updateClanStatus(db, clan.clan_id, {
-          status: 'error',
-          last_checked: new Date().toISOString()
-        }, userId);
-        const errorResult = {
-          clan_id: clan.clan_id,
-          clan_tag: clan.tag,
-          clan_name: clan.name,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          leavers: []
-        };
-        allResults.push(errorResult);
-        totalClansChecked++;
+          } catch (error) {
+            await updateClanStatus(db, clan.clan_id, {
+              status: 'error', last_checked: new Date().toISOString()
+            }, userId);
+            allResults.push({
+              clan_id: clan.clan_id, clan_tag: clan.tag, clan_name: clan.name,
+              error: error instanceof Error ? error.message : 'Unknown error', leavers: []
+            });
+            totalClansChecked++;
           }
         }
 
@@ -388,25 +216,17 @@ export async function POST(request: NextRequest) {
 
         sendProgress({
           type: hasMore ? 'batch_complete' : 'complete',
-          success: true,
-          message: progressMessage,
-          clans_checked: totalClansChecked,
-          total_leavers: totalLeavers,
-          results: allResults,
-          total: totalClans,
-          current: batchEnd,
-          hasMore: hasMore,
-          nextBatchStart: hasMore ? batchEnd : undefined
+          success: true, message: progressMessage,
+          clans_checked: totalClansChecked, total_leavers: totalLeavers,
+          results: allResults, total: totalClans, current: batchEnd,
+          hasMore, nextBatchStart: hasMore ? batchEnd : undefined
         });
 
         controller.close();
       } catch (error) {
-        console.error('[Manual Check] Top-level error:', error);
         sendProgress({
-          type: 'error',
-          message: 'Manual check failed',
-          success: false,
-          error: error instanceof Error ? error.message : 'Internal server error'
+          type: 'error', message: 'Manual check failed',
+          success: false, error: error instanceof Error ? error.message : 'Internal server error'
         });
         controller.close();
       }

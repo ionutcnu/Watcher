@@ -47,8 +47,6 @@ export async function fetchTomatoStats(
   try {
     const url = `https://api.tomato.gg/api/player/recents/${region}/${accountId}?cache=false&days=1,3,7,30,60&battles=1000,100`;
 
-    console.log(`[Tomato API] Fetching stats for account ${accountId}`);
-
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -57,17 +55,15 @@ export async function fetchTomatoStats(
     });
 
     if (!response.ok) {
-      console.error(`[Tomato API] Failed to fetch stats for ${accountId}:`, response.status);
       return null;
     }
 
     const data = await response.json();
 
-    // Find the 60 days data
-    const stats60Days = data?.data?.[days] as TomatoApiResponse;
+    // Structure is data.data.days[60], not data.data[60]
+    const stats60Days = data?.data?.days?.[days] as TomatoApiResponse;
 
     if (!stats60Days?.overall) {
-      console.log(`[Tomato API] No ${days} days data for account ${accountId}`);
       return null;
     }
 
@@ -96,8 +92,7 @@ export async function fetchTomatoStats(
       avgFrags: battles > 0 ? frags / battles : 0,
       kdRatio: (battles - survived) > 0 ? frags / (battles - survived) : 0,
     };
-  } catch (error) {
-    console.error(`[Tomato API] Error fetching stats for ${accountId}:`, error);
+  } catch {
     return null;
   }
 }

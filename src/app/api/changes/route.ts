@@ -1,30 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getRecentChanges } from '@/lib/storage';
-import { getDB } from '@/lib/cloudflare';
+import { withDB } from '@/lib/api-guards';
+import { ok, serverError } from '@/lib/api-response';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const days = parseInt(searchParams.get('days') || '7');
+    const days = parseInt(new URL(request.url).searchParams.get('days') || '7');
 
-    const db = await getDB();
-    if (!db) {
-      console.error('D1 database binding not found');
-      return NextResponse.json(
-        { error: 'Database configuration error' },
-        { status: 500 }
-      );
-    }
+    const { db, error } = await withDB();
+    if (error) return error;
 
     const changes = await getRecentChanges(db, days);
-
-    return NextResponse.json({ changes });
-
+    return ok({ changes });
   } catch (error) {
-    console.error('Get changes error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
-      { status: 500 }
-    );
+    return serverError(error instanceof Error ? error.message : 'Internal server error');
   }
 }

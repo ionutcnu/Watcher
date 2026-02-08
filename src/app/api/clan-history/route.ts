@@ -1,36 +1,41 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getWargamingAPI, apiKeyMissingResponse } from '@/lib/api-helpers';
+import { NextRequest } from 'next/server';
+import { withWargamingAPI } from '@/lib/api-guards';
+import { ok, badRequest, serverError } from '@/lib/api-response';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const clanId = searchParams.get('clanId');
-    const realm = searchParams.get('realm') || 'eu';
-    
-    if (!clanId) {
-      return NextResponse.json(
-        { error: 'Clan ID is required' },
-        { status: 400 }
-      );
-    }
+    const params = new URL(request.url).searchParams;
+    const clanId = params.get('clanId');
+    const realm = params.get('realm') || 'eu';
 
-    const api = await getWargamingAPI();
-    if (!api) {
-      return apiKeyMissingResponse();
-    }
+    if (!clanId) return badRequest('Clan ID is required');
+
+    const { api, error } = await withWargamingAPI();
+    if (error) return error;
+
     const rawData = await api.getClanNewsfeed(parseInt(clanId), realm);
 
-    // Parse the events based on the actual API structure
-    const events = [];
+    // Parse events from the actual API structure
+    const events: Array<{
+      type: string;
+      subtype: string;
+      player: { account_id: number | null; account_name: string };
+      timestamp: number;
+      date: string;
+      time: string;
+      role: string;
+      group: string;
+      description: string;
+      initiator: unknown;
+    }> = [];
+
     if (rawData?.results && Array.isArray(rawData.results)) {
       for (const item of rawData.results) {
-        // Each item has a collection of events
         if (item.collection && Array.isArray(item.collection)) {
           for (const event of item.collection) {
             const eventData = event._meta_;
             const timestamp = new Date(eventData.created_at).getTime() / 1000;
-            
-            // Determine event type and player info
+
             let eventType = 'unknown';
             let playerName = '';
             let accountId = null;
@@ -59,16 +64,13 @@ export async function GET(request: NextRequest) {
               events.push({
                 type: eventType,
                 subtype: eventData.subtype,
-                player: {
-                  account_id: accountId,
-                  account_name: playerName
-                },
-                timestamp: timestamp,
+                player: { account_id: accountId, account_name: playerName },
+                timestamp,
                 date: new Date(timestamp * 1000).toISOString().split('T')[0],
                 time: new Date(timestamp * 1000).toLocaleString(),
-                role: role,
+                role,
                 group: eventData.group || 'Military Personnel',
-                description: description,
+                description,
                 initiator: eventData.initiator_id
               });
             }
@@ -77,20 +79,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Sort by timestamp (newest first)
     events.sort((a, b) => b.timestamp - a.timestamp);
 
-    return NextResponse.json({ 
-      success: true,
-      events: events,
-      total: events.length
-    });
-
+    return ok({ events, total: events.length });
   } catch (error) {
-    console.error('Get clan history error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
-      { status: 500 }
-    );
+    return serverError(error instanceof Error ? error.message : 'Internal server error');
   }
 }
