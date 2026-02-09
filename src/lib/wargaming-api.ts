@@ -91,6 +91,10 @@ export class WargamingAPI {
   async searchClans(search: string, limit: number = 10): Promise<Array<{ clan_id: number; tag: string; name: string }>> {
     const data = await this.makeRequest('/wgn/clans/list/', { search, limit });
 
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
     return data.map((clan: ApiClanSearchResponse) => ({
       clan_id: clan.clan_id,
       tag: clan.tag,

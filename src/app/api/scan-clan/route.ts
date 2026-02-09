@@ -3,6 +3,7 @@ import { getLatestSnapshot, saveSnapshot, saveChanges } from '@/lib/storage';
 import { detectChanges, createSnapshot } from '@/lib/change-detector';
 import { withDB, withWargamingAPI } from '@/lib/api-guards';
 import { ok, badRequest, notFound, serverError } from '@/lib/api-response';
+import type { ClanChange } from '@/types/clan';
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,8 +36,8 @@ export async function POST(request: NextRequest) {
       changes,
       summary: {
         total_members: currentClan.members.length,
-        joins: changes.filter(c => c.type === 'join').length,
-        leaves: changes.filter(c => c.type === 'leave').length
+        joins: changes.filter((c: ClanChange) => c.type === 'join').length,
+        leaves: changes.filter((c: ClanChange) => c.type === 'leave').length
       }
     });
   } catch (error) {

@@ -12,7 +12,7 @@ export interface ClanHistoryEvent {
   role: string;
   group: string;
   description: string;
-  initiator: number;
+  initiator: number | null;
   initiatorName: string | null;
 }
 
@@ -56,7 +56,9 @@ export function useClanHistory({ selectedClan }: UseClanHistoryOptions) {
       if (rawData?.items && Array.isArray(rawData.items)) {
         for (const item of rawData.items) {
           if (item.accounts_ids) {
-            item.accounts_ids.forEach((id: number) => allAccountIds.add(id));
+            for (const id of item.accounts_ids) {
+              allAccountIds.add(id);
+            }
           }
           if (item.initiator_id) allAccountIds.add(item.initiator_id);
           if (item.created_by) allAccountIds.add(item.created_by);

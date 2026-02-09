@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useSession } from '@/lib/auth-client';
 import { ModernBackground } from '@/components/ui/modern-background';
@@ -30,11 +30,7 @@ export default function AdminPage() {
   const [signupEnabled, setSignupEnabled] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(false);
 
-  useEffect(() => {
-    if (session?.user) { loadUsers(); loadSettings(); }
-  }, [session]);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch('/api/admin/users');
@@ -43,7 +39,19 @@ export default function AdminPage() {
       if (result.success) setUsers(result.users);
       else setError(result.error || 'Failed to load users');
     } catch { setError('Failed to load users'); } finally { setLoading(false); }
-  };
+  }, []);
+
+  const loadSettings = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/settings');
+      const result = await response.json();
+      if (result.success) setSignupEnabled(result.settings.signupEnabled);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    if (session?.user) { loadUsers(); loadSettings(); }
+  }, [session, loadUsers, loadSettings]);
 
   const deleteUser = async (userId: string, userEmail: string) => {
     if (!confirm(`Are you sure you want to delete user ${userEmail}?`)) return;
@@ -68,14 +76,6 @@ export default function AdminPage() {
       if (result.success) { await loadUsers(); toast.success(`User ${currentActive ? 'deactivated' : 'activated'}`); }
       else toast.error(result.error || 'Failed to toggle user status');
     } catch { toast.error('Failed to toggle user status'); }
-  };
-
-  const loadSettings = async () => {
-    try {
-      const response = await fetch('/api/admin/settings');
-      const result = await response.json();
-      if (result.success) setSignupEnabled(result.settings.signupEnabled);
-    } catch { /* ignore */ }
   };
 
   const toggleSignup = async () => {

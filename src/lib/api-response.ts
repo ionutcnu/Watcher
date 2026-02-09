@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 /** Standard success response: { success: true, ...data } */
 export function ok<T extends Record<string, unknown>>(data: T, status = 200) {
-  return NextResponse.json({ success: true, ...data }, { status });
+  return NextResponse.json({ success: true as const, ...data }, { status });
 }
 
 /** Standard error response: { success: false, error } */
