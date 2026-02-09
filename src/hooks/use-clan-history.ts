@@ -133,7 +133,7 @@ export function useClanHistory({ selectedClan }: UseClanHistoryOptions) {
 
       events.sort((a, b) => b.timestamp - a.timestamp);
       setAllEvents(events);
-      applyFilters(events);
+      // applyFilters will be called automatically by useEffect when allEvents changes
       setShowHistory(true);
     } catch (err) {
       console.error('Failed to load clan history:', err);
@@ -141,6 +141,16 @@ export function useClanHistory({ selectedClan }: UseClanHistoryOptions) {
       setHistoryLoading(false);
     }
   }, [selectedClan, applyFilters]);
+
+  const escapeCsv = (value: string | number | null | undefined): string => {
+    if (value === null || value === undefined) return '';
+    const str = String(value);
+    // Escape quotes and wrap in quotes if contains comma, quote, or newline
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
 
   const exportToCSV = useCallback((recentChanges: Array<{ date: string; type: string; player: { account_name: string; account_id: number }; clan: { tag: string; name: string } }>) => {
     const dataToExport = allEvents.length > 0 ? allEvents : recentChanges;
@@ -154,14 +164,14 @@ export function useClanHistory({ selectedClan }: UseClanHistoryOptions) {
         ...allEvents.map(event => {
           const date = new Date(event.timestamp * 1000).toLocaleDateString('en-GB');
           const time = new Date(event.timestamp * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-          return `${date},${time},${event.type},${event.player.account_name},${event.player.account_id},${event.role},${event.group},"${event.description}",${event.initiatorName || 'Unknown'}`;
+          return `${escapeCsv(date)},${escapeCsv(time)},${escapeCsv(event.type)},${escapeCsv(event.player.account_name)},${event.player.account_id},${escapeCsv(event.role)},${escapeCsv(event.group)},${escapeCsv(event.description)},${escapeCsv(event.initiatorName || 'Unknown')}`;
         })
       ].join('\n');
     } else {
       csvContent = [
         'Date,Type,Player,Clan,Tag',
         ...recentChanges.map(change =>
-          `${change.date},${change.type},${change.player.account_name},[${change.clan.tag}] ${change.clan.name},${change.clan.tag}`
+          `${escapeCsv(change.date)},${escapeCsv(change.type)},${escapeCsv(change.player.account_name)},${escapeCsv(`[${change.clan.tag}] ${change.clan.name}`)},${escapeCsv(change.clan.tag)}`
         )
       ].join('\n');
     }

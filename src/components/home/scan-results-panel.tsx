@@ -1,9 +1,11 @@
 'use client';
 
+import { CheckCircle } from 'lucide-react';
 import { ClanChange } from '@/types/clan';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface ScanResult {
   success: boolean;
@@ -43,7 +45,7 @@ export function ScanResultsPanel({ scanResult }: ScanResultsPanelProps) {
           </div>
         )}
 
-        {scanResult.changes && scanResult.changes.length > 0 && (
+        {scanResult.changes && scanResult.changes.length > 0 ? (
           <div>
             <h3 className="font-medium text-text-primary mb-3">Recent Changes</h3>
             <div className="space-y-2">
@@ -63,6 +65,13 @@ export function ScanResultsPanel({ scanResult }: ScanResultsPanelProps) {
               ))}
             </div>
           </div>
+        ) : (
+          <EmptyState
+            icon={<CheckCircle className="w-6 h-6" />}
+            title="No changes detected"
+            description="The clan roster is stable — no joins or leaves since the last scan."
+            className="py-6"
+          />
         )}
       </CardContent>
     </Card>

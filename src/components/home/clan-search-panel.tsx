@@ -1,10 +1,12 @@
 'use client';
 
+import { Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TacticalLoader } from '@/components/ui/tactical-loader';
+import { EmptyState } from '@/components/ui/empty-state';
 import { motion } from 'framer-motion';
 
 interface ClanSearchPanelProps {
@@ -27,7 +29,7 @@ export function ClanSearchPanel({
   loading, historyLoading, error
 }: ClanSearchPanelProps) {
   return (
-    <Card className="mb-8">
+    <Card variant="primary" className="mb-8">
       <CardHeader>
         <CardTitle>Search & Scan Clan</CardTitle>
       </CardHeader>
@@ -48,10 +50,19 @@ export function ClanSearchPanel({
           )}
         </div>
 
+        {!searchLoading && clanSearch.trim().length > 0 && searchResults.length === 0 && (
+          <EmptyState
+            icon={<Search className="w-6 h-6" />}
+            title="No clans found"
+            description="No clans matched your search. Try a different name or tag."
+            className="py-6"
+          />
+        )}
+
         {searchResults.length > 0 && (
           <div className="space-y-2">
             <Label>Search Results</Label>
-            <div className="max-h-64 overflow-y-auto space-y-2">
+            <div className="max-h-64 overflow-y-auto overflow-x-hidden space-y-2">
               {searchResults.map((clan) => (
                 <motion.div
                   key={clan.clan_id}

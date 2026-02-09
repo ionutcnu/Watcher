@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
 export interface BulkImportResults {
@@ -47,7 +48,7 @@ export function useBulkImport(onComplete?: () => void) {
       }
 
       if (clanTags.length === 0) {
-        alert('No valid clan names found in the Excel file. Please ensure clan names are in the first column.');
+        toast.error('No valid clan names found in the Excel file. Please ensure clan names are in the first column.');
         return;
       }
 
@@ -76,7 +77,7 @@ export function useBulkImport(onComplete?: () => void) {
           const contentType = response.headers.get('content-type');
           if (!contentType || !contentType.includes('application/json')) {
             await response.text();
-            alert(`Server error for batch ${batchIndex + 1}: ${response.status} - ${response.statusText}`);
+            toast.error(`Server error for batch ${batchIndex + 1}: ${response.status} - ${response.statusText}`);
             continue;
           }
 
@@ -86,10 +87,10 @@ export function useBulkImport(onComplete?: () => void) {
             totalSuccessful += result.successful;
             totalFailed += result.failed;
           } else {
-            alert(`Batch ${batchIndex + 1} failed: ${result.error || 'Unknown error'}`);
+            toast.error(`Batch ${batchIndex + 1} failed: ${result.error || 'Unknown error'}`);
           }
         } catch (error) {
-          alert(`Batch ${batchIndex + 1} failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          toast.error(`Batch ${batchIndex + 1} failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
 
         if (batchIndex < batches.length - 1) {
@@ -100,7 +101,7 @@ export function useBulkImport(onComplete?: () => void) {
       setResults({ total: clanTags.length, successful: totalSuccessful, failed: totalFailed, results: allResults });
       onComplete?.();
     } catch {
-      alert('Failed to process Excel file. Please ensure it is a valid .xlsx or .xls file.');
+      toast.error('Failed to process Excel file. Please ensure it is a valid .xlsx or .xls file.');
     } finally {
       setLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

@@ -17,6 +17,14 @@ export interface ClanCheckResult {
     description: string;
     stats: TomatoPlayerStats | null;
   }>;
+  joiners?: Array<{
+    player: { account_id: number; account_name: string };
+    timestamp: number;
+    date: string;
+    time: string;
+    description: string;
+    stats: TomatoPlayerStats | null;
+  }>;
 }
 
 export interface ManualCheckResults {
@@ -145,13 +153,18 @@ export function useManualCheck(onComplete?: () => void) {
   const fetchStatsForClan = async (clanId: number) => {
     if (!results?.results) return;
     const clanResult = results.results.find(r => r.clan_id === clanId);
-    if (!clanResult?.leavers || clanResult.leavers.length === 0) return;
+    const hasLeavers = clanResult?.leavers && clanResult.leavers.length > 0;
+    const hasJoiners = clanResult?.joiners && clanResult.joiners.length > 0;
+    if (!hasLeavers && !hasJoiners) return;
     if (statsLoaded[clanId]) return;
 
     setStatsLoading(prev => ({ ...prev, [clanId]: true }));
 
     try {
-      const accountIds = clanResult.leavers.map(l => l.player.account_id);
+      const accountIds: number[] = [];
+      if (hasLeavers) accountIds.push(...clanResult.leavers!.map(l => l.player.account_id));
+      if (hasJoiners) accountIds.push(...clanResult.joiners!.map(j => j.player.account_id));
+
       const response = await fetch('/api/player-stats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -165,12 +178,16 @@ export function useManualCheck(onComplete?: () => void) {
           return {
             ...prev,
             results: prev.results.map(r => {
-              if (r.clan_id === clanId && r.leavers) {
+              if (r.clan_id === clanId) {
                 return {
                   ...r,
-                  leavers: r.leavers.map(leaver => ({
+                  leavers: r.leavers?.map(leaver => ({
                     ...leaver,
                     stats: result.stats[leaver.player.account_id] || null
+                  })),
+                  joiners: r.joiners?.map(joiner => ({
+                    ...joiner,
+                    stats: result.stats[joiner.player.account_id] || null
                   }))
                 };
               }

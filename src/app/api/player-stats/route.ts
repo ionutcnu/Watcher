@@ -1,13 +1,28 @@
 import { NextRequest } from 'next/server';
 import { fetchTomatoStats, type TomatoPlayerStats } from '@/lib/tomato-api';
+import { withAuth } from '@/lib/api-guards';
 import { ok, badRequest, serverError } from '@/lib/api-response';
+
+const ALLOWED_REGIONS = ['eu', 'na', 'asia', 'ru'];
+const MAX_ACCOUNT_IDS = 100;
 
 export async function POST(request: NextRequest) {
   try {
-    const { accountIds, region = 'eu' } = await request.json();
+    const auth = await withAuth(request);
+    if (auth.error) return auth.error;
+
+    const { accountIds, region = 'eu', days = 60 } = await request.json();
 
     if (!accountIds || !Array.isArray(accountIds)) {
       return badRequest('accountIds array is required');
+    }
+
+    if (accountIds.length > MAX_ACCOUNT_IDS) {
+      return badRequest(`Cannot fetch stats for more than ${MAX_ACCOUNT_IDS} accounts at once`);
+    }
+
+    if (!ALLOWED_REGIONS.includes(region)) {
+      return badRequest(`Invalid region. Allowed: ${ALLOWED_REGIONS.join(', ')}`);
     }
 
     const BATCH_SIZE = 3;
@@ -27,14 +42,14 @@ export async function POST(request: NextRequest) {
             setTimeout(() => resolve(null), TIMEOUT_MS)
           );
 
-          let stats = await Promise.race([fetchTomatoStats(region, accountId, 60), timeoutPromise]);
+          let stats = await Promise.race([fetchTomatoStats(region, accountId, days), timeoutPromise]);
 
           if (!stats) {
             await new Promise(resolve => setTimeout(resolve, 2000));
             const retryTimeout = new Promise<null>((resolve) =>
               setTimeout(() => resolve(null), TIMEOUT_MS)
             );
-            stats = await Promise.race([fetchTomatoStats(region, accountId, 60), retryTimeout]);
+            stats = await Promise.race([fetchTomatoStats(region, accountId, days), retryTimeout]);
           }
 
           results[accountId] = stats;

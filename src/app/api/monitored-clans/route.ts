@@ -8,8 +8,9 @@ export async function GET(request: NextRequest) {
     const auth = await withAuth(request);
     if (auth.error) return auth.error;
 
-    const { db, error } = await withDB();
-    if (error) return error;
+    const dbResult = await withDB();
+    if (dbResult.error) return dbResult.error;
+    const { db } = dbResult;
 
     const clans = await getMonitoredClans(db, auth.user.id);
     return ok({ clans });
@@ -23,21 +24,35 @@ export async function POST(request: NextRequest) {
     const auth = await withAuth(request);
     if (auth.error) return auth.error;
 
-    const { db, error } = await withDB();
-    if (error) return error;
+    const dbResult = await withDB();
+    if (dbResult.error) return dbResult.error;
+    const { db } = dbResult;
 
     const { action, ...data } = await request.json();
 
+    if (!action || typeof action !== 'string') {
+      return badRequest('Action is required');
+    }
+
     switch (action) {
       case 'add':
+        if (!data.clan_id || !data.tag || !data.name) {
+          return badRequest('Missing required fields: clan_id, tag, name');
+        }
         await addMonitoredClan(db, { ...data, user_id: auth.user.id });
         return ok({ message: 'Clan added to monitoring list' });
 
       case 'remove':
+        if (!data.clanId) {
+          return badRequest('clanId is required');
+        }
         await removeMonitoredClan(db, data.clanId, auth.user.id);
         return ok({ message: 'Clan removed from monitoring list' });
 
       case 'update':
+        if (!data.clanId || !data.updates) {
+          return badRequest('clanId and updates are required');
+        }
         await updateClanStatus(db, data.clanId, data.updates, auth.user.id);
         return ok({ message: 'Clan status updated' });
 

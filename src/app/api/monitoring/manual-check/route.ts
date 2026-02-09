@@ -22,6 +22,7 @@ interface ProgressData {
     clan_name: string;
     error?: string;
     leavers?: unknown[];
+    joiners?: unknown[];
     count?: number;
   }>;
 }
@@ -140,12 +141,22 @@ export async function POST(request: NextRequest) {
               description: string;
               stats: TomatoPlayerStats | null;
             }> = [];
+            const joiners: Array<{
+              player: { account_id: number; account_name: string };
+              timestamp: number;
+              date: string;
+              time: string;
+              description: string;
+              stats: TomatoPlayerStats | null;
+            }> = [];
             const allAccountIds = new Set<number>();
 
             if (rawData?.items && Array.isArray(rawData.items)) {
               for (const item of rawData.items) {
-                if (item.subtype === 'leave_clan' && item.accounts_ids) {
-                  item.accounts_ids.forEach((id: number) => allAccountIds.add(id));
+                if ((item.subtype === 'leave_clan' || item.subtype === 'join_clan') && item.accounts_ids) {
+                  item.accounts_ids.forEach((id: number) => {
+                    allAccountIds.add(id);
+                  });
                 }
               }
 
@@ -157,9 +168,9 @@ export async function POST(request: NextRequest) {
                 }
 
                 for (const item of rawData.items) {
-                  if (item.subtype === 'leave_clan' && item.accounts_ids) {
-                    const timestamp = new Date(item.created_at).getTime() / 1000;
+                  const timestamp = new Date(item.created_at).getTime() / 1000;
 
+                  if (item.subtype === 'leave_clan' && item.accounts_ids) {
                     for (const accountId of item.accounts_ids) {
                       const playerName = playerNames[accountId] || `Player_${accountId}`;
                       leavers.push({
@@ -171,22 +182,35 @@ export async function POST(request: NextRequest) {
                         stats: null
                       });
                     }
+                  } else if (item.subtype === 'join_clan' && item.accounts_ids) {
+                    for (const accountId of item.accounts_ids) {
+                      const playerName = playerNames[accountId] || `Player_${accountId}`;
+                      joiners.push({
+                        player: { account_id: accountId, account_name: playerName },
+                        timestamp,
+                        date: new Date(timestamp * 1000).toISOString().split('T')[0],
+                        time: new Date(timestamp * 1000).toLocaleString(),
+                        description: `Player ${playerName} has joined this clan.`,
+                        stats: null
+                      });
+                    }
                   }
                 }
               }
             }
 
             leavers.sort((a, b) => b.timestamp - a.timestamp);
+            joiners.sort((a, b) => b.timestamp - a.timestamp);
 
             allResults.push({
               clan_id: clan.clan_id, clan_tag: clan.tag, clan_name: clan.name,
-              leavers, count: leavers.length
+              leavers, joiners, count: leavers.length
             });
             totalLeavers += leavers.length;
 
+            // Update last_checked but don't modify last_member_count here (newsfeed doesn't provide current member count)
             await updateClanStatus(db, clan.clan_id, {
-              status: 'active', last_checked: new Date().toISOString(),
-              last_member_count: leavers.length
+              status: 'active', last_checked: new Date().toISOString()
             }, userId);
 
             totalClansChecked++;

@@ -1,9 +1,11 @@
 'use client';
 
+import { Activity } from 'lucide-react';
 import { ClanChange } from '@/types/clan';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
 import { motion } from 'framer-motion';
 
 interface RecentChangesPanelProps {
@@ -70,13 +72,13 @@ export function RecentChangesPanel({ recentChanges, lastScannedClan, onExport, h
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-text-secondary">
-              {lastScannedClan
-                ? `No recent changes found for [${lastScannedClan.tag}] ${lastScannedClan.name}.`
-                : 'No recent changes found. Scan some clans to see activity.'}
-            </p>
-          </div>
+          <EmptyState
+            icon={<Activity className="w-6 h-6" />}
+            title="No recent activity"
+            description={lastScannedClan
+              ? `No recent changes found for [${lastScannedClan.tag}] ${lastScannedClan.name}.`
+              : 'No player movements detected in the last 7 days. Scan a clan to check for changes.'}
+          />
         )}
       </CardContent>
     </Card>

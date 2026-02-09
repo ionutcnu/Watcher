@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { NumberTicker } from './number-ticker';
 
 interface StatCardProps {
@@ -11,6 +12,7 @@ interface StatCardProps {
   icon?: ReactNode;
   delay?: number;
   className?: string;
+  tooltip?: string;
   trend?: {
     value: number;
     isPositive: boolean;
@@ -23,16 +25,17 @@ export function StatCard({
   icon,
   delay = 0,
   className = '',
+  tooltip,
   trend
 }: StatCardProps) {
-  return (
+  const card = (
     <motion.div
       initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{
         delay,
         duration: 0.4,
-        ease: [0.22, 1, 0.36, 1] // Ease-out-cubic
+        ease: [0.22, 1, 0.36, 1]
       }}
       className={className}
     >
@@ -61,5 +64,18 @@ export function StatCard({
         </CardContent>
       </Card>
     </motion.div>
+  );
+
+  if (!tooltip) return card;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {card}
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{tooltip}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }

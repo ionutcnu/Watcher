@@ -7,8 +7,9 @@ export async function GET(request: NextRequest) {
     const search = new URL(request.url).searchParams.get('search');
     if (!search) return badRequest('Search parameter is required');
 
-    const { api, error } = await withWargamingAPI();
-    if (error) return error;
+    const apiResult = await withWargamingAPI();
+    if (apiResult.error) return apiResult.error;
+    const { api } = apiResult;
 
     const clans = await api.searchClans(search, 10);
     return ok({ clans });

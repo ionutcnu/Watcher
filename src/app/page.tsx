@@ -94,7 +94,7 @@ export default function Home() {
     if (history.allEvents.length > 0 && scanResult) {
       const joins = history.allEvents.filter(e => e.type === 'join').length;
       const leaves = history.allEvents.filter(e => e.type === 'leave').length;
-      setScanResult(prev => prev ? { ...prev, summary: { ...prev.summary!, joins, leaves } } : null);
+      setScanResult(prev => prev && prev.summary ? { ...prev, summary: { ...prev.summary, joins, leaves } } : prev);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [history.allEvents.length]);

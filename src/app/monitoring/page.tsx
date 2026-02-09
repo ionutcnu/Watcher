@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 import { MonitoredClan } from '@/types/monitoring';
 import { useSession } from '@/lib/auth-client';
@@ -9,13 +10,14 @@ import { useBulkImport } from '@/hooks/use-bulk-import';
 import { ModernBackground } from '@/components/ui/modern-background';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TacticalLoader } from '@/components/ui/tactical-loader';
+import { MonitoringSkeleton } from '@/components/monitoring/monitoring-skeleton';
 import { motion } from 'framer-motion';
 import { MonitoredClansTable } from '@/components/monitoring/monitored-clans-table';
 import { BulkImportPanel } from '@/components/monitoring/bulk-import-panel';
 import { ManualCheckProgress } from '@/components/monitoring/manual-check-progress';
 import { ManualCheckResultsView } from '@/components/monitoring/manual-check-results';
 import { AddClanPanel } from '@/components/monitoring/add-clan-panel';
+import { ClanComparison } from '@/components/monitoring/clan-comparison';
 
 export default function MonitoringPage() {
   const { data: session, isPending } = useSession();
@@ -27,12 +29,23 @@ export default function MonitoringPage() {
   const [monitoredClansExpanded, setMonitoredClansExpanded] = useState(true);
   const [selectedClans, setSelectedClans] = useState<Set<number>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [clanRatings, setClanRatings] = useState<Record<number, number | null>>({});
 
   const loadMonitoredClans = async () => {
     try {
       const response = await fetch('/api/monitored-clans');
       const result = await response.json();
-      if (result.success) setMonitoredClans(result.clans);
+      if (result.success) {
+        setMonitoredClans(result.clans);
+        // Fetch ratings for all monitored clans
+        if (result.clans.length > 0) {
+          const ids = result.clans.map((c: MonitoredClan) => c.clan_id).join(',');
+          fetch(`/api/clan-ratings?clan_ids=${ids}`)
+            .then(r => r.json())
+            .then(r => { if (r.success) setClanRatings(r.ratings); })
+            .catch(() => {});
+        }
+      }
     } catch { /* ignore */ } finally {
       setLoading(false);
     }
@@ -60,9 +73,9 @@ export default function MonitoringPage() {
         body: JSON.stringify({ action: 'add', clan_id: clan.clan_id, tag: clan.tag, name: clan.name, enabled: true })
       });
       const result = await response.json();
-      if (result.success) { loadMonitoredClans(); setAddClanSearch(''); setSearchResults([]); }
-      else alert(result.error || 'Failed to add clan');
-    } catch { alert('Failed to add clan'); }
+      if (result.success) { loadMonitoredClans(); setAddClanSearch(''); setSearchResults([]); toast.success('Clan added to monitoring'); }
+      else toast.error(result.error || 'Failed to add clan');
+    } catch { toast.error('Failed to add clan'); }
   };
 
   const removeClanFromMonitoring = async (clanId: number) => {
@@ -73,19 +86,19 @@ export default function MonitoringPage() {
         body: JSON.stringify({ action: 'remove', clanId })
       });
       const result = await response.json();
-      if (result.success) loadMonitoredClans();
-      else alert(result.error || 'Failed to remove clan');
-    } catch { alert('Failed to remove clan'); }
+      if (result.success) { loadMonitoredClans(); toast.success('Clan removed from monitoring'); }
+      else toast.error(result.error || 'Failed to remove clan');
+    } catch { toast.error('Failed to remove clan'); }
   };
 
-  const toggleClanEnabled = async (clanId: number, enabled: boolean) => {
+  const toggleClanEnabled = async (clanId: number, enabled: boolean, skipReload = false) => {
     try {
       const response = await fetch('/api/monitored-clans', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'update', clanId, updates: { enabled } })
       });
       const result = await response.json();
-      if (result.success) loadMonitoredClans();
+      if (result.success && !skipReload) loadMonitoredClans();
     } catch { /* ignore */ }
   };
 
@@ -113,13 +126,16 @@ export default function MonitoringPage() {
             body: JSON.stringify({ action: 'remove', clanId })
           });
         } else {
-          await toggleClanEnabled(clanId, op === 'enable');
+          // Skip individual reloads in bulk operations
+          await toggleClanEnabled(clanId, op === 'enable', true);
         }
       }
+      const count = selectedClans.size;
       setSelectedClans(new Set());
-      if (op === 'remove') loadMonitoredClans();
-      alert(`Successfully ${op === 'remove' ? 'removed' : op === 'enable' ? 'enabled' : 'disabled'} ${selectedClans.size} clans`);
-    } catch { alert(`Some clans failed to ${op}`); } finally { setBulkActionLoading(false); }
+      // Reload once after all operations complete
+      loadMonitoredClans();
+      toast.success(`Successfully ${op === 'remove' ? 'removed' : op === 'enable' ? 'enabled' : 'disabled'} ${count} clans`);
+    } catch { toast.error(`Some clans failed to ${op}`); } finally { setBulkActionLoading(false); }
   };
 
   useEffect(() => {
@@ -129,8 +145,8 @@ export default function MonitoringPage() {
 
   if (isPending || loading) {
     return (
-      <ModernBackground className="min-h-screen flex items-center justify-center">
-        <TacticalLoader variant="turret" size="lg" color="green" message="Loading Dashboard..." />
+      <ModernBackground>
+        <MonitoringSkeleton />
       </ModernBackground>
     );
   }
@@ -178,6 +194,7 @@ export default function MonitoringPage() {
 
         <MonitoredClansTable
           clans={monitoredClans}
+          clanRatings={clanRatings}
           expanded={monitoredClansExpanded}
           onToggleExpanded={() => setMonitoredClansExpanded(!monitoredClansExpanded)}
           selectedClans={selectedClans}
@@ -191,22 +208,26 @@ export default function MonitoringPage() {
           bulkActionLoading={bulkActionLoading}
         />
 
-        <BulkImportPanel
-          loading={bulkImport.loading}
-          results={bulkImport.results}
-          fileInputRef={bulkImport.fileInputRef}
-          onFileUpload={bulkImport.handleFileUpload}
-          onClearResults={bulkImport.clearResults}
-        />
+        <ClanComparison clans={monitoredClans} clanRatings={clanRatings} />
 
-        <AddClanPanel
-          searchQuery={addClanSearch}
-          onSearchChange={setAddClanSearch}
-          searchLoading={searchLoading}
-          searchResults={searchResults}
-          monitoredClans={monitoredClans}
-          onAddClan={addClanToMonitoring}
-        />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <AddClanPanel
+            searchQuery={addClanSearch}
+            onSearchChange={setAddClanSearch}
+            searchLoading={searchLoading}
+            searchResults={searchResults}
+            monitoredClans={monitoredClans}
+            onAddClan={addClanToMonitoring}
+          />
+
+          <BulkImportPanel
+            loading={bulkImport.loading}
+            results={bulkImport.results}
+            fileInputRef={bulkImport.fileInputRef}
+            onFileUpload={bulkImport.handleFileUpload}
+            onClearResults={bulkImport.clearResults}
+          />
+        </div>
 
         {manualCheck.results && manualCheck.results.success && (
           <ManualCheckResultsView

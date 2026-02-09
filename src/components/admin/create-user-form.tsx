@@ -52,7 +52,7 @@ export function CreateUserForm({ onCreated, onError }: CreateUserFormProps) {
   };
 
   return (
-    <Card className="mb-8">
+    <Card variant="elevated" className="mb-8">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Create New User</CardTitle>

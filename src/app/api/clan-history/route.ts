@@ -10,10 +10,14 @@ export async function GET(request: NextRequest) {
 
     if (!clanId) return badRequest('Clan ID is required');
 
-    const { api, error } = await withWargamingAPI();
-    if (error) return error;
+    const clanIdNum = parseInt(clanId, 10);
+    if (isNaN(clanIdNum)) return badRequest('Invalid clan ID');
 
-    const rawData = await api.getClanNewsfeed(parseInt(clanId), realm);
+    const apiResult = await withWargamingAPI();
+    if (apiResult.error) return apiResult.error;
+    const { api } = apiResult;
+
+    const rawData = await api.getClanNewsfeed(clanIdNum, realm);
 
     // Parse events from the actual API structure
     const events: Array<{

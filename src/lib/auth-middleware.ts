@@ -25,18 +25,24 @@ export async function requireAuth(request: NextRequest) {
 
     // Check if user is active (not pending approval)
     const db = await getDB();
-    if (db) {
-      const user = await db
-        .prepare('SELECT active FROM user WHERE id = ?')
-        .bind(session.user.id)
-        .first<{ active: number }>();
+    if (!db) {
+      // Fail-closed: DB unavailability blocks access rather than allowing it
+      return NextResponse.json(
+        { error: "Service temporarily unavailable" },
+        { status: 503 }
+      );
+    }
 
-      if (user && user.active === 0) {
-        return NextResponse.json(
-          { error: "Account pending approval - Please wait for admin to activate your account" },
-          { status: 403 }
-        );
-      }
+    const user = await db
+      .prepare('SELECT active FROM user WHERE id = ?')
+      .bind(session.user.id)
+      .first<{ active: number }>();
+
+    if (user && user.active === 0) {
+      return NextResponse.json(
+        { error: "Account pending approval - Please wait for admin to activate your account" },
+        { status: 403 }
+      );
     }
 
     return {

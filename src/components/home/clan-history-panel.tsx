@@ -1,10 +1,12 @@
 'use client';
 
+import { History } from 'lucide-react';
 import type { ClanHistoryEvent } from '@/hooks/use-clan-history';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
 import { motion } from 'framer-motion';
 
 interface ClanHistoryPanelProps {
@@ -169,10 +171,11 @@ export function ClanHistoryPanel({
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-text-secondary mb-2">No history data available for this clan.</p>
-            <p className="text-sm text-text-tertiary">Try a different clan or check back later.</p>
-          </div>
+          <EmptyState
+            icon={<History className="w-6 h-6" />}
+            title="No history available"
+            description="No historical data found for this clan. Try a different clan or check back later."
+          />
         )}
       </CardContent>
     </Card>

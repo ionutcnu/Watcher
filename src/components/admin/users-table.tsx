@@ -1,7 +1,9 @@
 'use client';
 
+import { Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface User {
   id: string;
@@ -23,17 +25,21 @@ interface UsersTableProps {
 
 export function UsersTable({ users, currentUserId, onDelete, onToggleActive }: UsersTableProps) {
   return (
-    <Card>
+    <Card variant="primary">
       <CardHeader>
         <CardTitle>Users ({users.length})</CardTitle>
       </CardHeader>
       <CardContent>
         {users.length === 0 ? (
-          <p className="text-text-tertiary text-center py-8">No users found</p>
+          <EmptyState
+            icon={<Users className="w-6 h-6" />}
+            title="No users found"
+            description="No registered users yet. Create the first user account to get started."
+          />
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-border-primary">
-              <thead className="bg-bg-secondary">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-surface-elevated">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">Email</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">Name</th>
@@ -43,7 +49,7 @@ export function UsersTable({ users, currentUserId, onDelete, onToggleActive }: U
                   <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-bg-primary divide-y divide-border-primary">
+              <tbody className="bg-surface divide-y divide-border">
                 {users.map((user) => (
                   <tr key={user.id}>
                     <td className="px-6 py-4 whitespace-nowrap">

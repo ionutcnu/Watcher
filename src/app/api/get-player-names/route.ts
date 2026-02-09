@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import { withWargamingAPI } from '@/lib/api-guards';
 import { ok, badRequest, serverError } from '@/lib/api-response';
 
+const MAX_ACCOUNT_IDS = 100;
+
 export async function POST(request: NextRequest) {
   try {
     const { accountIds } = await request.json();
@@ -10,8 +12,13 @@ export async function POST(request: NextRequest) {
       return badRequest('Account IDs array is required');
     }
 
-    const { api, error } = await withWargamingAPI();
-    if (error) return error;
+    if (accountIds.length > MAX_ACCOUNT_IDS) {
+      return badRequest(`Cannot fetch more than ${MAX_ACCOUNT_IDS} player names at once`);
+    }
+
+    const apiResult = await withWargamingAPI();
+    if (apiResult.error) return apiResult.error;
+    const { api } = apiResult;
 
     const playerNames = await api.getPlayerNames(accountIds);
     return ok({ playerNames });

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useSession } from '@/lib/auth-client';
 import { ModernBackground } from '@/components/ui/modern-background';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TacticalLoader } from '@/components/ui/tactical-loader';
+import { AdminSkeleton } from '@/components/admin/admin-skeleton';
 import Link from 'next/link';
 import { CreateUserForm } from '@/components/admin/create-user-form';
 import { UsersTable } from '@/components/admin/users-table';
@@ -52,9 +53,9 @@ export default function AdminPage() {
         body: JSON.stringify({ action: 'delete', userId }),
       });
       const result = await response.json();
-      if (result.success) await loadUsers();
-      else alert(result.error || 'Failed to delete user');
-    } catch { alert('Failed to delete user'); }
+      if (result.success) { await loadUsers(); toast.success(`User ${userEmail} deleted`); }
+      else toast.error(result.error || 'Failed to delete user');
+    } catch { toast.error('Failed to delete user'); }
   };
 
   const toggleUserActive = async (userId: string, currentActive: boolean) => {
@@ -64,9 +65,9 @@ export default function AdminPage() {
         body: JSON.stringify({ action: 'toggle_active', userId, active: !currentActive }),
       });
       const result = await response.json();
-      if (result.success) await loadUsers();
-      else alert(result.error || 'Failed to toggle user status');
-    } catch { alert('Failed to toggle user status'); }
+      if (result.success) { await loadUsers(); toast.success(`User ${currentActive ? 'deactivated' : 'activated'}`); }
+      else toast.error(result.error || 'Failed to toggle user status');
+    } catch { toast.error('Failed to toggle user status'); }
   };
 
   const loadSettings = async () => {
@@ -85,15 +86,15 @@ export default function AdminPage() {
         body: JSON.stringify({ signupEnabled: !signupEnabled }),
       });
       const result = await response.json();
-      if (result.success) setSignupEnabled(!signupEnabled);
-      else alert(result.error || 'Failed to update settings');
-    } catch { alert('Failed to update settings'); } finally { setSettingsLoading(false); }
+      if (result.success) { setSignupEnabled(!signupEnabled); toast.success(`Public sign-up ${!signupEnabled ? 'enabled' : 'disabled'}`); }
+      else toast.error(result.error || 'Failed to update settings');
+    } catch { toast.error('Failed to update settings'); } finally { setSettingsLoading(false); }
   };
 
   if (isPending || loading) {
     return (
-      <ModernBackground className="min-h-screen flex items-center justify-center">
-        <TacticalLoader variant="turret" size="lg" color="green" message="Loading Admin Panel..." />
+      <ModernBackground>
+        <AdminSkeleton />
       </ModernBackground>
     );
   }

@@ -10,8 +10,9 @@ export async function GET(request: NextRequest) {
     const admin = await withAdmin(request);
     if (admin.error) return admin.error;
 
-    const { db, error } = await withDB();
-    if (error) return error;
+    const dbResult = await withDB();
+    if (dbResult.error) return dbResult.error;
+    const { db } = dbResult;
 
     const kysely = new Kysely({ dialect: new D1Dialect({ database: db }) });
 
@@ -77,6 +78,12 @@ export async function POST(request: NextRequest) {
         const { userId } = data;
         if (!userId) return badRequest('User ID is required');
         if (userId === admin.user.id) return badRequest('Cannot delete your own account');
+
+        // Delete user's monitored clans first (FK integrity)
+        await kysely
+          .deleteFrom('monitored_clans' as never)
+          .where('user_id' as never, '=', userId)
+          .execute();
 
         await kysely
           .deleteFrom('user' as never)

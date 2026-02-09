@@ -1,14 +1,20 @@
 import { NextRequest } from 'next/server';
 import { getRecentChanges } from '@/lib/storage';
 import { withDB } from '@/lib/api-guards';
-import { ok, serverError } from '@/lib/api-response';
+import { ok, badRequest, serverError } from '@/lib/api-response';
 
 export async function GET(request: NextRequest) {
   try {
-    const days = parseInt(new URL(request.url).searchParams.get('days') || '7');
+    const daysParam = new URL(request.url).searchParams.get('days') || '7';
+    const days = parseInt(daysParam, 10);
 
-    const { db, error } = await withDB();
-    if (error) return error;
+    if (isNaN(days) || days < 1) {
+      return badRequest('Invalid days parameter');
+    }
+
+    const dbResult = await withDB();
+    if (dbResult.error) return dbResult.error;
+    const { db } = dbResult;
 
     const changes = await getRecentChanges(db, days);
     return ok({ changes });

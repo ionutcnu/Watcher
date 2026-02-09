@@ -30,6 +30,12 @@ export async function POST(request: NextRequest) {
       return badRequest('clanTags must be a non-empty array');
     }
 
+    // Enforce server-side limit to prevent DoS via excessive API calls
+    const MAX_BULK_IMPORT = 50;
+    if (clanTags.length > MAX_BULK_IMPORT) {
+      return badRequest(`Cannot import more than ${MAX_BULK_IMPORT} clans at once`);
+    }
+
     const dbResult = await withDB();
     if (dbResult.error) return dbResult.error;
     const { db } = dbResult;

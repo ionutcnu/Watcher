@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { Header } from "@/components/layout/header";
+import { Toaster } from "@/components/ui/sonner";
+import { Providers } from "@/components/layout/providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -39,10 +41,13 @@ export default function RootLayout({
         <div id="particles-js" className="fixed inset-0 z-0"></div>
 
         {/* Page content */}
-        <div className="relative z-10">
-          <Header />
-          {children}
-        </div>
+        <Providers>
+          <div className="relative z-10">
+            <Header />
+            {children}
+          </div>
+          <Toaster />
+        </Providers>
 
         {/* Initialize particles after DOM loads */}
         <Script id="particles-init" strategy="afterInteractive">
@@ -52,10 +57,10 @@ export default function RootLayout({
               particlesJS('particles-js', {
                 particles: {
                   number: {
-                    value: 80,
+                    value: 40,
                     density: {
                       enable: true,
-                      value_area: 800
+                      value_area: 1000
                     }
                   },
                   color: {
@@ -65,23 +70,23 @@ export default function RootLayout({
                     type: 'circle'
                   },
                   opacity: {
-                    value: 0.8,
-                    random: false
+                    value: 0.3,
+                    random: true
                   },
                   size: {
-                    value: 3,
+                    value: 2,
                     random: true
                   },
                   line_linked: {
                     enable: true,
                     distance: 150,
                     color: '#ffffff',
-                    opacity: 0.5,
-                    width: 1
+                    opacity: 0.15,
+                    width: 0.5
                   },
                   move: {
                     enable: true,
-                    speed: 2,
+                    speed: 1,
                     direction: 'none',
                     random: false,
                     straight: false,
@@ -97,20 +102,16 @@ export default function RootLayout({
                       mode: 'grab'
                     },
                     onclick: {
-                      enable: true,
-                      mode: 'push'
+                      enable: false
                     },
                     resize: true
                   },
                   modes: {
                     grab: {
-                      distance: 140,
+                      distance: 120,
                       line_linked: {
-                        opacity: 1
+                        opacity: 0.4
                       }
-                    },
-                    push: {
-                      particles_nb: 4
                     }
                   }
                 },

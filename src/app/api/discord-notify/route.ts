@@ -1,13 +1,17 @@
 import { NextRequest } from 'next/server';
 import { PlayerExclusionAlert } from '@/types/monitoring';
 import { getMonitoringConfig } from '@/lib/monitoring-storage';
-import { withDB } from '@/lib/api-guards';
+import { withDB, withAuth } from '@/lib/api-guards';
 import { ok, fail, serverError } from '@/lib/api-response';
 
 export async function POST(request: NextRequest) {
   try {
-    const { db, error } = await withDB();
-    if (error) return error;
+    const auth = await withAuth(request);
+    if (auth.error) return auth.error;
+
+    const dbResult = await withDB();
+    if (dbResult.error) return dbResult.error;
+    const { db } = dbResult;
 
     const { alert }: { alert: PlayerExclusionAlert } = await request.json();
     const config = await getMonitoringConfig(db);
@@ -32,17 +36,29 @@ export async function POST(request: NextRequest) {
       timestamp: alert.excluded_at
     };
 
-    const response = await fetch(config.discord_webhook_url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ embeds: [embed] })
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    if (!response.ok) {
-      return fail(`Discord API error: ${response.status}`);
+    try {
+      const response = await fetch(config.discord_webhook_url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ embeds: [embed] }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        return fail(`Discord API error: ${response.status}`);
+      }
+
+      return ok({ message: 'Discord notification sent' });
+    } catch (fetchError) {
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        return fail('Discord webhook request timeout');
+      }
+      throw fetchError;
     }
-
-    return ok({ message: 'Discord notification sent' });
   } catch (error) {
     return serverError(error instanceof Error ? error.message : 'Failed to send Discord notification');
   }

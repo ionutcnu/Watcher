@@ -141,6 +141,53 @@ export class WargamingAPI {
     return await response.json();
   }
 
+  async getClanPageInfo(clanId: number, realm: string = 'eu'): Promise<{ avg_damage: number | null; rating: number | null }> {
+    const url = `https://${realm}.wargaming.net/clans/wot/${clanId}/api/claninfo/`;
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': `https://${realm}.wargaming.net/clans/wot/${clanId}/`,
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Clan page info request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    // Parse average damage and rating from response
+    const avgDamage = data?.clanview?.rating?.average_damage_per_battle;
+    const rating = data?.clanview?.rating?.rating;
+
+    return {
+      avg_damage: avgDamage != null && !isNaN(avgDamage) ? Math.round(avgDamage) : null,
+      rating: rating != null && !isNaN(rating) ? Math.round(rating) : null
+    };
+  }
+
+  async getClanRatings(clanIds: number[]): Promise<Record<number, number | null>> {
+    if (clanIds.length === 0) return {};
+    try {
+      const data = await this.makeRequest('/wot/clanratings/clans/', {
+        clan_id: clanIds.join(','),
+      });
+      const result: Record<number, number | null> = {};
+      for (const id of clanIds) {
+        const entry = data?.[id.toString()];
+        const rating = entry?.global_rating_weighted_avg;
+        // Ensure we never return NaN - convert to null
+        result[id] = (rating != null && !isNaN(rating)) ? rating : null;
+      }
+      return result;
+    } catch {
+      return {};
+    }
+  }
+
   async getPlayerNames(accountIds: number[]): Promise<Record<number, string>> {
     try {
       const data = await this.makeRequest('/wgn/account/info/', {
@@ -156,6 +203,41 @@ export class WargamingAPI {
       }
 
       return playerNames;
+    } catch {
+      return {};
+    }
+  }
+
+  async getClanMembersStats(accountIds: number[]): Promise<Record<number, { avg_damage: number; battles: number } | null>> {
+    if (accountIds.length === 0) return {};
+    try {
+      // Batch requests in groups of 100 (API limit)
+      const result: Record<number, { avg_damage: number; battles: number } | null> = {};
+
+      for (let i = 0; i < accountIds.length; i += 100) {
+        const batch = accountIds.slice(i, i + 100);
+        const data = await this.makeRequest('/wot/account/info/', {
+          account_id: batch.join(','),
+          fields: 'statistics.all.battles,statistics.all.damage_dealt'
+        });
+
+        for (const id of batch) {
+          const accountData = data?.[id.toString()];
+          const battles = accountData?.statistics?.all?.battles;
+          const totalDamage = accountData?.statistics?.all?.damage_dealt;
+
+          if (battles && battles > 0 && totalDamage != null) {
+            result[id] = {
+              avg_damage: Math.round(totalDamage / battles),
+              battles: battles
+            };
+          } else {
+            result[id] = null;
+          }
+        }
+      }
+
+      return result;
     } catch {
       return {};
     }

@@ -1,14 +1,15 @@
 import { NextRequest } from 'next/server';
 import { withDB, withAdmin } from '@/lib/api-guards';
-import { ok, serverError } from '@/lib/api-response';
+import { ok, badRequest, serverError } from '@/lib/api-response';
 
 export async function GET(request: NextRequest) {
   try {
     const admin = await withAdmin(request);
     if (admin.error) return admin.error;
 
-    const { db, error } = await withDB();
-    if (error) return error;
+    const dbResult = await withDB();
+    if (dbResult.error) return dbResult.error;
+    const { db } = dbResult;
 
     const config = await db
       .prepare('SELECT signup_enabled FROM monitoring_config WHERE id = 1')
@@ -31,8 +32,14 @@ export async function POST(request: NextRequest) {
 
     const { signupEnabled } = await request.json();
 
-    const { db, error } = await withDB();
-    if (error) return error;
+    // Validate boolean type to prevent malformed input
+    if (typeof signupEnabled !== 'boolean') {
+      return badRequest('signupEnabled must be a boolean value');
+    }
+
+    const dbResult = await withDB();
+    if (dbResult.error) return dbResult.error;
+    const { db } = dbResult;
 
     await db
       .prepare('UPDATE monitoring_config SET signup_enabled = ? WHERE id = 1')
