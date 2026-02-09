@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     try {
       const clanPageInfo = await wargamingApi.getClanPageInfo(clanId, region);
       avg_damage = clanPageInfo.avg_damage;
-    } catch (error) {
+    } catch {
       // Silently fail, return stats without avg_damage
     }
 

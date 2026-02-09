@@ -26,7 +26,7 @@ const METRICS = [
   { key: 'member_count', label: 'Members', max: 100 },
   { key: 'avg_wn8', label: 'Avg WN8', max: 3000 },
   { key: 'avg_winrate', label: 'Win Rate', max: 65 },
-  { key: 'avg_damage', label: 'Avg Damage', max: 3000 },
+  { key: 'avg_damage', label: 'Avg Dmg', max: 3000 },
 ] as const;
 
 type MetricKey = typeof METRICS[number]['key'];
@@ -296,7 +296,7 @@ async function buildClanStats(
         rating,
       };
     }
-  } catch (error) {
+  } catch {
     // Fallback to Wargaming rating on error
   }
 

@@ -49,13 +49,13 @@ export function PlayerCardTooltip({
       const playerStats = result.success ? (result.stats?.[accountId] ?? null) : null;
       statsCache.set(accountId, playerStats);
       setStats(playerStats);
-    } catch (error) {
+    } catch {
       statsCache.set(accountId, null);
     } finally {
       setLoading(false);
       setFetched(true);
     }
-  }, [accountId, accountName, fetched]);
+  }, [accountId, fetched]);
 
   const initials = accountName.slice(0, 2).toUpperCase();
 

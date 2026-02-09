@@ -140,7 +140,7 @@ export function useClanHistory({ selectedClan }: UseClanHistoryOptions) {
     } finally {
       setHistoryLoading(false);
     }
-  }, [selectedClan, applyFilters]);
+  }, [selectedClan]);
 
   const escapeCsv = (value: string | number | null | undefined): string => {
     if (value === null || value === undefined) return '';
