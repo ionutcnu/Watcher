@@ -53,7 +53,6 @@ export default function RootLayout({
         <Script id="particles-init" strategy="afterInteractive">
           {`
             if (typeof particlesJS !== 'undefined') {
-              console.log('Initializing particles.js (ONCE)');
               particlesJS('particles-js', {
                 particles: {
                   number: {

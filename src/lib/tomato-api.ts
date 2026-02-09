@@ -48,14 +48,10 @@ export async function fetchTomatoStats(
 
     const data = await response.json();
 
-    console.log(`[TomatoAPI] Fetching ${days} days for account ${accountId}`);
-    console.log(`[TomatoAPI] Available days:`, Object.keys(data?.data?.days || {}));
-
     // Structure is data.data.days[60], not data.data[60]
     const stats60Days = data?.data?.days?.[days] as TomatoApiResponse;
 
     if (!stats60Days?.overall) {
-      console.warn(`[TomatoAPI] No data for ${days} days, available:`, Object.keys(data?.data?.days || {}));
       return null;
     }
 
@@ -139,8 +135,6 @@ export async function fetchTomatoClanStats(
     const encodedTag = encodeURIComponent(clanTag);
     const url = `https://tomato.gg/clan-stats/${encodedTag}-${clanId}/${region.toUpperCase()}`;
 
-    console.log(`[Tomato API] Fetching clan stats: ${url}`);
-
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -185,19 +179,14 @@ export async function fetchTomatoClanStats(
     );
 
     if (activeMembers.length === 0) {
-      console.warn(`[Tomato API] No active members for clan ${clanTag} (${clanId})`);
       return null;
     }
-
-    console.log(`[Tomato API] Successfully fetched stats for ${clanTag}: ${activeMembers.length} active members`);
 
     // Calculate averages from recent stats (last 60 days)
     const totalWN8 = activeMembers.reduce((sum: number, m: TomatoClanMember) => sum + (m.recentWN8 || 0), 0);
     const totalWinrate = activeMembers.reduce((sum: number, m: TomatoClanMember) => sum + (m.recentWinrate || 0), 0);
     const totalBattles = activeMembers.reduce((sum: number, m: TomatoClanMember) => sum + (m.recentBattles || 0), 0);
     const totalTier = activeMembers.reduce((sum: number, m: TomatoClanMember) => sum + (m.recentAvgtier || 0), 0);
-
-    console.log(`[Tomato API] Clan ${clanTag} rating extracted from HTML: ${clanRating}`);
 
     return {
       clan_id: clanData.clan_id,

@@ -35,7 +35,6 @@ export function PlayerCardTooltip({
 
     setLoading(true);
     try {
-      console.log(`[PlayerCardTooltip] Fetching stats for ${accountName} (${accountId})`);
       const response = await fetch('/api/player-stats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -43,22 +42,14 @@ export function PlayerCardTooltip({
       });
 
       if (!response.ok) {
-        console.error(`[PlayerCardTooltip] API error: ${response.status}`);
         throw new Error(`API returned ${response.status}`);
       }
 
       const result = await response.json();
-      console.log(`[PlayerCardTooltip] API response:`, result);
-
       const playerStats = result.success ? (result.stats?.[accountId] ?? null) : null;
       statsCache.set(accountId, playerStats);
       setStats(playerStats);
-
-      if (!playerStats) {
-        console.warn(`[PlayerCardTooltip] No stats found for ${accountName}`);
-      }
     } catch (error) {
-      console.error(`[PlayerCardTooltip] Fetch failed for ${accountName}:`, error);
       statsCache.set(accountId, null);
     } finally {
       setLoading(false);

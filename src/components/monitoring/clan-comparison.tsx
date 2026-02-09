@@ -274,8 +274,6 @@ async function buildClanStats(
     const response = await fetch(`/api/clan-stats?clan_id=${clanId}&region=eu`);
     const result = await response.json();
 
-    console.log(`[ClanComparison] API response for clan ${clanId}:`, result);
-
     if (result.success && result.stats) {
       avg_wn8 = result.stats.avg_wn8;
       avg_damage = result.stats.avg_damage;
@@ -287,8 +285,6 @@ async function buildClanStats(
       const wargamingRating = clanRatings?.[clanId] ?? null;
       const rating = tomatoRating ?? wargamingRating;
 
-      console.log(`[ClanComparison] Clan ${clanId} rating - Tomato: ${tomatoRating}, Wargaming: ${wargamingRating}, Using: ${rating}`);
-
       return {
         clan_id: clanId,
         tag: clan?.tag ?? '???',
@@ -299,11 +295,9 @@ async function buildClanStats(
         avg_winrate,
         rating,
       };
-    } else {
-      console.warn(`[ClanComparison] API call failed for clan ${clanId}:`, result.error || 'Unknown error');
     }
   } catch (error) {
-    console.error(`[ClanComparison] Failed to fetch clan stats for ${clanId}:`, error);
+    // Fallback to Wargaming rating on error
   }
 
   // Fallback if API failed

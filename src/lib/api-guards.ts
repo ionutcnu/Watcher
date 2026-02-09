@@ -88,6 +88,6 @@ export async function withAdmin(request: NextRequest): Promise<AuthSuccess | Aut
 
 export function isAdmin(email: string): boolean {
   const env = getCloudflareEnvSync();
-  const adminEmails = env?.ADMIN_EMAILS?.split(',').map(e => e.trim()) || [];
+  const adminEmails = env?.ADMIN_EMAILS?.split(',').map(e => e.trim()).filter(Boolean) || [];
   return adminEmails.includes(email);
 }
