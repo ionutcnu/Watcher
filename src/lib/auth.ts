@@ -70,18 +70,8 @@ export const auth = betterAuth({
   // Trust proxy headers (for Cloudflare)
   trustedOrigins: [
     process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-    "https://clanspy.win",
-    "https://wot-clan-watcher.cioncu-ionut.workers.dev",
   ],
 
-  // Social providers - disabled for now, can enable later
-  // socialProviders: {
-  //   discord: {
-  //     clientId: process.env.DISCORD_CLIENT_ID || "",
-  //     clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
-  //     redirectURI: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/discord`,
-  //   },
-  // },
 });
 
 // Export types for use in other files

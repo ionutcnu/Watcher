@@ -1,30 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getDB } from '@/lib/cloudflare';
+import { withDB } from '@/lib/api-guards';
+import { ok, serverError } from '@/lib/api-response';
 
-// Check if sign-up is enabled
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const db = await getDB();
-    if (!db) {
-      return NextResponse.json(
-        { enabled: false, error: 'Database not available' },
-        { status: 500 }
-      );
-    }
+    const { db, error } = await withDB();
+    if (error) return ok({ enabled: false });
 
-    // Check monitoring_config for signup_enabled flag
     const config = await db
       .prepare('SELECT signup_enabled FROM monitoring_config WHERE id = 1')
       .first<{ signup_enabled: number }>();
 
-    const enabled = config?.signup_enabled === 1;
-
-    return NextResponse.json({ enabled });
-  } catch (error) {
-    console.error('Signup check error:', error);
-    return NextResponse.json(
-      { enabled: false, error: 'Failed to check signup status' },
-      { status: 500 }
-    );
+    return ok({ enabled: config?.signup_enabled === 1 });
+  } catch {
+    return serverError('Failed to check signup status');
   }
 }

@@ -24,6 +24,18 @@
   --warning: #f59e0b;            /* Amber-500 */
   --danger: #ef4444;             /* Red-500 */
 
+  /* WN8 colors (official tomato.gg scale) */
+  --wn8-very-bad: #930D0D;
+  --wn8-bad: #CD3333;
+  --wn8-below-avg: #CC7A00;
+  --wn8-average: #CCB800;
+  --wn8-above-avg: #849B24;
+  --wn8-good: #4D7326;
+  --wn8-very-good: #4099BF;
+  --wn8-great: #3972C6;
+  --wn8-unicum: #6C2FC6;
+  --wn8-super-unicum: #8225AD;
+
   /* Subtle gradients */
   --gradient-start: #18181b;
   --gradient-end: #0a0a0a;
@@ -91,6 +103,16 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-wn8-very-bad: var(--wn8-very-bad);
+  --color-wn8-bad: var(--wn8-bad);
+  --color-wn8-below-avg: var(--wn8-below-avg);
+  --color-wn8-average: var(--wn8-average);
+  --color-wn8-above-avg: var(--wn8-above-avg);
+  --color-wn8-good: var(--wn8-good);
+  --color-wn8-very-good: var(--wn8-very-good);
+  --color-wn8-great: var(--wn8-great);
+  --color-wn8-unicum: var(--wn8-unicum);
+  --color-wn8-super-unicum: var(--wn8-super-unicum);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -99,6 +121,52 @@
 
 body {
   min-height: 100vh;
+}
+
+/* Camo texture for card headers */
+.camo-header {
+  position: relative;
+  overflow: hidden;
+}
+.camo-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 30px 20px at 20% 30%, rgba(39,39,42,0.7) 0%, transparent 100%),
+    radial-gradient(ellipse 40px 25px at 60% 70%, rgba(30,30,33,0.6) 0%, transparent 100%),
+    radial-gradient(ellipse 25px 35px at 80% 20%, rgba(45,45,48,0.5) 0%, transparent 100%),
+    radial-gradient(ellipse 35px 20px at 40% 50%, rgba(35,35,38,0.6) 0%, transparent 100%),
+    radial-gradient(ellipse 30px 30px at 10% 80%, rgba(42,42,45,0.5) 0%, transparent 100%),
+    radial-gradient(ellipse 45px 20px at 90% 60%, rgba(33,33,36,0.7) 0%, transparent 100%);
+  opacity: 0.8;
+  pointer-events: none;
+}
+.camo-header > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Camo section divider */
+.camo-divider {
+  height: 4px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 2px;
+}
+.camo-divider::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    #2a2a2d 0%, #1f1f22 15%, #333336 25%, #28282b 40%,
+    #1c1c1f 50%, #2f2f32 65%, #252528 75%, #333336 90%, #2a2a2d 100%
+  );
+}
+
+@keyframes crosshairSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @layer base {

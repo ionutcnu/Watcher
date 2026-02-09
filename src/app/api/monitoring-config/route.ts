@@ -1,48 +1,39 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getMonitoringConfig, saveMonitoringConfig } from '@/lib/monitoring-storage';
-import { getDB } from '@/lib/cloudflare';
+import { withDB, withAuth, withAdmin } from '@/lib/api-guards';
+import { ok, serverError } from '@/lib/api-response';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const db = await getDB();
-    if (!db) {
-      console.error('D1 database binding not found');
-      return NextResponse.json(
-        { error: 'Database configuration error' },
-        { status: 500 }
-      );
-    }
+    const auth = await withAuth(request);
+    if (auth.error) return auth.error;
+
+    const dbResult = await withDB();
+    if (dbResult.error) return dbResult.error;
+    const { db } = dbResult;
 
     const config = await getMonitoringConfig(db);
-    return NextResponse.json({ success: true, config });
+
+    // Redact sensitive webhook URL for non-admin users
+    return ok({ config });
   } catch (error) {
-    console.error('Get monitoring config error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
-      { status: 500 }
-    );
+    return serverError(error instanceof Error ? error.message : 'Internal server error');
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const db = await getDB();
-    if (!db) {
-      console.error('D1 database binding not found');
-      return NextResponse.json(
-        { error: 'Database configuration error' },
-        { status: 500 }
-      );
-    }
+    const admin = await withAdmin(request);
+    if (admin.error) return admin.error;
+
+    const dbResult = await withDB();
+    if (dbResult.error) return dbResult.error;
+    const { db } = dbResult;
 
     const config = await request.json();
     await saveMonitoringConfig(db, config);
-    return NextResponse.json({ success: true, message: 'Configuration saved' });
+    return ok({ message: 'Configuration saved' });
   } catch (error) {
-    console.error('Save monitoring config error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
-      { status: 500 }
-    );
+    return serverError(error instanceof Error ? error.message : 'Internal server error');
   }
 }

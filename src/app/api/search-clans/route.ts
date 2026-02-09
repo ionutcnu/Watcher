@@ -1,32 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getWargamingAPI, apiKeyMissingResponse } from '@/lib/api-helpers';
+import { NextRequest } from 'next/server';
+import { withWargamingAPI } from '@/lib/api-guards';
+import { ok, badRequest, serverError } from '@/lib/api-response';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const search = searchParams.get('search');
+    const search = new URL(request.url).searchParams.get('search');
+    if (!search) return badRequest('Search parameter is required');
 
-    if (!search) {
-      return NextResponse.json(
-        { error: 'Search parameter is required' },
-        { status: 400 }
-      );
-    }
-
-    const api = await getWargamingAPI();
-    if (!api) {
-      return apiKeyMissingResponse();
-    }
+    const apiResult = await withWargamingAPI();
+    if (apiResult.error) return apiResult.error;
+    const { api } = apiResult;
 
     const clans = await api.searchClans(search, 10);
-
-    return NextResponse.json({ clans });
-
+    return ok({ clans });
   } catch (error) {
-    console.error('Search clans error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
-      { status: 500 }
-    );
+    return serverError(error instanceof Error ? error.message : 'Internal server error');
   }
 }

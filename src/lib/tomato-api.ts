@@ -1,19 +1,5 @@
-export interface TomatoPlayerStats {
-  battles: number;
-  avgTier: number;
-  wn8: number;
-  wnx: number;
-  wins: number;
-  winrate: number;
-  survived: number;
-  survivalRate: number;
-  damage: number;
-  avgDamage: number;
-  damageRatio: number;
-  frags: number;
-  avgFrags: number;
-  kdRatio: number;
-}
+import type { TomatoPlayerStats } from '@/types/player-stats';
+export type { TomatoPlayerStats };
 
 interface TomatoApiResponse {
   overall?: {
@@ -45,9 +31,9 @@ export async function fetchTomatoStats(
   days: number = 60
 ): Promise<TomatoPlayerStats | null> {
   try {
-    const url = `https://api.tomato.gg/api/player/recents/${region}/${accountId}?cache=false&days=1,3,7,30,60&battles=1000,100`;
-
-    console.log(`[Tomato API] Fetching stats for account ${accountId}`);
+    // Tomato API supports: 1, 3, 7, 30, 60, 1000 days
+    // Request all available ranges, then extract the specific one
+    const url = `https://api.tomato.gg/api/player/recents/${region}/${accountId}?cache=false&days=1,3,7,30,60,1000&battles=1000,100`;
 
     const response = await fetch(url, {
       headers: {
@@ -57,17 +43,15 @@ export async function fetchTomatoStats(
     });
 
     if (!response.ok) {
-      console.error(`[Tomato API] Failed to fetch stats for ${accountId}:`, response.status);
       return null;
     }
 
     const data = await response.json();
 
-    // Find the 60 days data
-    const stats60Days = data?.data?.[days] as TomatoApiResponse;
+    // Structure is data.data.days[60], not data.data[60]
+    const stats60Days = data?.data?.days?.[days] as TomatoApiResponse;
 
     if (!stats60Days?.overall) {
-      console.log(`[Tomato API] No ${days} days data for account ${accountId}`);
       return null;
     }
 
@@ -96,8 +80,7 @@ export async function fetchTomatoStats(
       avgFrags: battles > 0 ? frags / battles : 0,
       kdRatio: (battles - survived) > 0 ? frags / (battles - survived) : 0,
     };
-  } catch (error) {
-    console.error(`[Tomato API] Error fetching stats for ${accountId}:`, error);
+  } catch {
     return null;
   }
 }
@@ -111,12 +94,113 @@ export function formatNumber(num: number, decimals: number = 0): string {
   return num.toFixed(decimals);
 }
 
-export function getWN8Color(wn8: number): string {
-  if (wn8 >= 2450) return 'text-purple-400'; // Super Unicum
-  if (wn8 >= 2150) return 'text-blue-400';   // Unicum
-  if (wn8 >= 1750) return 'text-cyan-400';   // Great
-  if (wn8 >= 1400) return 'text-green-400';  // Good
-  if (wn8 >= 1050) return 'text-yellow-400'; // Average
-  if (wn8 >= 750) return 'text-orange-400';  // Below Average
-  return 'text-red-400';                      // Bad
+/** @deprecated Use getWN8Color from '@/lib/wn8-colors' instead */
+export { getWN8Color } from './wn8-colors';
+
+export interface TomatoClanStats {
+  clan_id: number;
+  tag: string;
+  name: string;
+  members_count: number;
+  avg_wn8: number;
+  avg_winrate: number;
+  avg_battles: number; // Average battles (per member)
+  avg_tier: number;
+  clan_rating: number | null; // Tomato.gg's clan rating
+  avg_damage?: number; // Average damage per battle (added separately from WG API)
+}
+
+interface TomatoClanMember {
+  account_id: number;
+  account_name: string;
+  recentWN8?: number;
+  recentWinrate?: number;
+  recentBattles?: number;
+  recentAvgtier?: number;
+  recentDamage?: number; // Total damage in recent period
+  recentAvgDmg?: number; // Average damage per battle
+}
+
+/**
+ * Fetches clan statistics from Tomato.gg by parsing the clan stats page.
+ * Extracts member stats from __NEXT_DATA__ and calculates averages.
+ */
+export async function fetchTomatoClanStats(
+  region: string,
+  clanId: number,
+  clanTag: string
+): Promise<TomatoClanStats | null> {
+  try {
+    // URL encode the clan tag to handle special characters
+    const encodedTag = encodeURIComponent(clanTag);
+    const url = `https://tomato.gg/clan-stats/${encodedTag}-${clanId}/${region.toUpperCase()}`;
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html',
+      }
+    });
+
+    if (!response.ok) {
+      console.error(`[Tomato API] HTTP ${response.status} for clan ${clanTag} (${clanId})`);
+      return null;
+    }
+
+    const html = await response.text();
+
+    // Extract Clan Rating from HTML (it's rendered, not in __NEXT_DATA__)
+    let clanRating: number | null = null;
+    const ratingMatch = html.match(/>Clan Rating<\/div><div[^>]*>(\d+)<\/div>/);
+    if (ratingMatch) {
+      clanRating = parseInt(ratingMatch[1], 10);
+    }
+
+    // Extract __NEXT_DATA__ JSON from HTML
+    const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+    if (!match) {
+      console.error(`[Tomato API] No __NEXT_DATA__ found for clan ${clanTag} (${clanId})`);
+      return null;
+    }
+
+    const nextData = JSON.parse(match[1]);
+    const clanData = nextData?.props?.pageProps?.clanData;
+
+    if (!clanData?.members || !Array.isArray(clanData.members)) {
+      console.error(`[Tomato API] Invalid clan data structure for ${clanTag} (${clanId})`);
+      return null;
+    }
+
+    const members = clanData.members as TomatoClanMember[];
+
+    // Filter out members with no recent battles
+    const activeMembers = members.filter((m: TomatoClanMember) =>
+      m.recentBattles && m.recentBattles > 0
+    );
+
+    if (activeMembers.length === 0) {
+      return null;
+    }
+
+    // Calculate averages from recent stats (last 60 days)
+    const totalWN8 = activeMembers.reduce((sum: number, m: TomatoClanMember) => sum + (m.recentWN8 || 0), 0);
+    const totalWinrate = activeMembers.reduce((sum: number, m: TomatoClanMember) => sum + (m.recentWinrate || 0), 0);
+    const totalBattles = activeMembers.reduce((sum: number, m: TomatoClanMember) => sum + (m.recentBattles || 0), 0);
+    const totalTier = activeMembers.reduce((sum: number, m: TomatoClanMember) => sum + (m.recentAvgtier || 0), 0);
+
+    return {
+      clan_id: clanData.clan_id,
+      tag: clanData.tag,
+      name: clanData.name || clanData.tag,
+      members_count: clanData.members_count,
+      avg_wn8: Math.round(totalWN8 / activeMembers.length),
+      avg_winrate: parseFloat((totalWinrate / activeMembers.length).toFixed(2)),
+      avg_battles: Math.round(totalBattles / activeMembers.length),
+      avg_tier: parseFloat((totalTier / activeMembers.length).toFixed(2)),
+      clan_rating: clanRating,
+    };
+  } catch (error) {
+    console.error('Failed to fetch Tomato clan stats:', error);
+    return null;
+  }
 }

@@ -14,17 +14,13 @@ export function ParticlesBackground() {
   useEffect(() => {
     // Create initialization promise only once globally
     if (!initPromise) {
-      console.log('Creating initialization promise (should only happen ONCE)');
       initPromise = initParticlesEngine(async (engine: Engine) => {
-        console.log('Loading particles engine...');
         await loadSlim(engine);
-        console.log('Particles engine loaded!');
       });
     }
 
     // Wait for the promise to resolve
     initPromise.then(() => {
-      console.log('Particles ready, enabling render');
       setInit(true);
     });
   }, []); // Empty deps - only run once per component mount

@@ -1,7 +1,6 @@
 import { D1Database } from './storage';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 
-// Cloudflare environment interface
 export interface CloudflareEnv {
   DB: D1Database;
   WARGAMING_APPLICATION_ID: string;
@@ -12,46 +11,38 @@ export interface CloudflareEnv {
   ASSETS: unknown;
 }
 
-// Get Cloudflare environment using OpenNext's context helper with async mode
+/** Async env getter -- use in API route handlers and server components. */
 export async function getCloudflareEnv(): Promise<CloudflareEnv | null> {
   try {
-    // Use async mode to prevent build-time errors
     const context = await getCloudflareContext({ async: true });
-    if (context?.env) {
-      return context.env as CloudflareEnv;
-    }
-    return null;
-  } catch (error) {
-    // Silently return null - context not available (e.g., during build)
+    return (context?.env as CloudflareEnv) ?? null;
+  } catch {
     return null;
   }
 }
 
+/** Async DB getter -- preferred in API routes. */
 export async function getDB(): Promise<D1Database | null> {
   const env = await getCloudflareEnv();
-  return env?.DB || null;
+  return env?.DB ?? null;
 }
 
-// Synchronous version for Better Auth getters (runs at request time, not build time)
-// This will only work after the async context is initialized
+/** Sync DB getter -- only for Better Auth getters that run at request time, not build time. */
 export function getDBSync(): D1Database | null {
   try {
-    // At request time, context should be available synchronously
     const context = getCloudflareContext();
-    return (context?.env as CloudflareEnv)?.DB || null;
+    return (context?.env as CloudflareEnv)?.DB ?? null;
   } catch {
-    // During build or if context unavailable, return null
     return null;
   }
 }
 
-// Synchronous version for admin checks and other runtime-only functions
+/** Sync env getter -- only for runtime-only helpers (e.g. admin check). */
 export function getCloudflareEnvSync(): CloudflareEnv | null {
   try {
     const context = getCloudflareContext();
-    return (context?.env as CloudflareEnv) || null;
+    return (context?.env as CloudflareEnv) ?? null;
   } catch {
-    // During build or if context unavailable, return null
     return null;
   }
 }

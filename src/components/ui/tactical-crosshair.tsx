@@ -32,7 +32,6 @@ export function TacticalCrosshair({
 
   const selectedColor = colorMap[color];
   const selectedGlow = glowColorMap[color];
-  const halfSize = size / 2;
   const lineLength = size * 0.25;
   const lineWidth = 2;
   const bracketSize = size * 0.1875; // 24px for 128px

@@ -1,4 +1,4 @@
-import { ClanInfo, ClanSnapshot, ClanChange, ClanMember } from '@/types/clan';
+import { ClanInfo, ClanSnapshot, ClanChange } from '@/types/clan';
 
 export function detectChanges(
   previousSnapshot: ClanSnapshot | null,
@@ -15,7 +15,7 @@ export function detectChanges(
   const previousMembers = new Map(
     previousSnapshot.members.map(m => [m.account_id, m])
   );
-  
+
   const currentMembers = new Map(
     currentClan.members.map(m => [m.account_id, m])
   );

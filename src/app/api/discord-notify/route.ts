@@ -1,53 +1,33 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { PlayerExclusionAlert } from '@/types/monitoring';
 import { getMonitoringConfig } from '@/lib/monitoring-storage';
-import { getDB } from '@/lib/cloudflare';
+import { withDB, withAuth } from '@/lib/api-guards';
+import { ok, fail, serverError } from '@/lib/api-response';
 
 export async function POST(request: NextRequest) {
   try {
-    const db = await getDB();
-    if (!db) {
-      console.error('D1 database binding not found');
-      return NextResponse.json(
-        { error: 'Database configuration error' },
-        { status: 500 }
-      );
-    }
+    const auth = await withAuth(request);
+    if (auth.error) return auth.error;
+
+    const dbResult = await withDB();
+    if (dbResult.error) return dbResult.error;
+    const { db } = dbResult;
 
     const { alert }: { alert: PlayerExclusionAlert } = await request.json();
     const config = await getMonitoringConfig(db);
 
     if (!config.discord_webhook_url) {
-      return NextResponse.json({
-        success: false,
-        error: 'Discord webhook URL not configured'
-      });
+      return fail('Discord webhook URL not configured', 400);
     }
 
     const embed = {
       title: "🚪 Player Left Clan",
       color: 0xff6b6b,
       fields: [
-        {
-          name: "Player",
-          value: `**${alert.player_name}** (ID: ${alert.player_id})`,
-          inline: true
-        },
-        {
-          name: "Clan",
-          value: `[${alert.clan_tag}] ${alert.clan_name}`,
-          inline: true
-        },
-        {
-          name: "Previous Role",
-          value: alert.previous_role,
-          inline: true
-        },
-        {
-          name: "Left At",
-          value: `<t:${Math.floor(new Date(alert.excluded_at).getTime() / 1000)}:f>`,
-          inline: false
-        }
+        { name: "Player", value: `**${alert.player_name}** (ID: ${alert.player_id})`, inline: true },
+        { name: "Clan", value: `[${alert.clan_tag}] ${alert.clan_name}`, inline: true },
+        { name: "Previous Role", value: alert.previous_role, inline: true },
+        { name: "Left At", value: `<t:${Math.floor(new Date(alert.excluded_at).getTime() / 1000)}:f>`, inline: false }
       ],
       footer: {
         text: "Clan Watcher",
@@ -56,29 +36,30 @@ export async function POST(request: NextRequest) {
       timestamp: alert.excluded_at
     };
 
-    const discordPayload = {
-      embeds: [embed]
-    };
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    const response = await fetch(config.discord_webhook_url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(discordPayload)
-    });
+    try {
+      const response = await fetch(config.discord_webhook_url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ embeds: [embed] }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      throw new Error(`Discord API error: ${response.status}`);
+      if (!response.ok) {
+        return fail(`Discord API error: ${response.status}`);
+      }
+
+      return ok({ message: 'Discord notification sent' });
+    } catch (fetchError) {
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        return fail('Discord webhook request timeout');
+      }
+      throw fetchError;
     }
-
-    return NextResponse.json({ success: true, message: 'Discord notification sent' });
-
   } catch (error) {
-    console.error('Discord notification error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to send Discord notification' },
-      { status: 500 }
-    );
+    return serverError(error instanceof Error ? error.message : 'Failed to send Discord notification');
   }
 }
