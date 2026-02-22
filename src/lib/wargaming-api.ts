@@ -102,6 +102,44 @@ export class WargamingAPI {
     }));
   }
 
+  async getPlayerCurrentClan(accountId: number): Promise<{
+    tag: string;
+    name: string;
+    color: string | null;
+    members_count: number;
+    emblemUrl: string | null;
+  } | null> {
+    try {
+      const data = await this.makeRequest('/wot/clans/accountinfo/', { account_id: accountId });
+      const clanData = data?.[String(accountId)]?.clan;
+      if (!clanData) return null;
+      const e = clanData.emblems ?? {};
+      return {
+        tag: clanData.tag,
+        name: clanData.name,
+        color: clanData.color ?? null,
+        members_count: clanData.members_count,
+        emblemUrl: e.x64?.portal ?? e.x64?.wot ?? e.x32?.portal ?? null,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async getPlayerCurrentClans(accountIds: number[]): Promise<Record<number, string | null>> {
+    if (accountIds.length === 0) return {};
+    try {
+      const data = await this.makeRequest('/wot/clans/accountinfo/', { account_id: accountIds.join(',') });
+      const result: Record<number, string | null> = {};
+      for (const id of accountIds) {
+        result[id] = data?.[String(id)]?.clan?.tag ?? null;
+      }
+      return result;
+    } catch {
+      return {};
+    }
+  }
+
   async getPlayerClanHistory(accountId: number): Promise<Array<{
     clan_id: number;
     clan_tag: string;
@@ -185,6 +223,24 @@ export class WargamingAPI {
         const rating = entry?.global_rating_weighted_avg;
         // Ensure we never return NaN - convert to null
         result[id] = (rating != null && !isNaN(rating)) ? rating : null;
+      }
+      return result;
+    } catch {
+      return {};
+    }
+  }
+
+  async getClanEmblems(clanIds: number[]): Promise<Record<number, string | null>> {
+    if (clanIds.length === 0) return {};
+    try {
+      const data = await this.makeRequest('/wgn/clans/info/', {
+        clan_id: clanIds.join(','),
+        fields: 'emblems',
+      });
+      const result: Record<number, string | null> = {};
+      for (const id of clanIds) {
+        const entry = data?.[id.toString()];
+        result[id] = entry?.emblems?.x64?.portal ?? entry?.emblems?.x32?.portal ?? null;
       }
       return result;
     } catch {

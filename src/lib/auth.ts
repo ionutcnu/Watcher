@@ -5,6 +5,8 @@ import { getDBSync } from "./cloudflare";
 
 // Better Auth configuration with D1 database using Kysely
 export const auth = betterAuth({
+  baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  secret: process.env.BETTER_AUTH_SECRET ?? (() => { if (process.env.NODE_ENV === 'production') throw new Error('BETTER_AUTH_SECRET is required in production'); return 'dev-placeholder'; })(),
   database: {
     // D1 database adapter using Kysely - Better Auth will use this for storing users, sessions, accounts
     provider: "sqlite", // D1 is SQLite-compatible

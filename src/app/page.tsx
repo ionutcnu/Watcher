@@ -5,11 +5,15 @@ import { ClanChange } from '@/types/clan';
 import { useClanHistory } from '@/hooks/use-clan-history';
 import { ModernBackground } from '@/components/ui/modern-background';
 import { Button } from '@/components/ui/button';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ClanSearchPanel } from '@/components/home/clan-search-panel';
 import { ScanResultsPanel } from '@/components/home/scan-results-panel';
 import { ClanHistoryPanel } from '@/components/home/clan-history-panel';
 import { RecentChangesPanel } from '@/components/home/recent-changes-panel';
+import { FeaturesSection } from '@/components/home/features-section';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { SparkCanvas } from '@/components/ui/spark-canvas';
+import { VideoSmoke } from '@/components/ui/video-smoke';
 
 interface ScanResult {
   success: boolean;
@@ -35,6 +39,28 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
 
   const history = useClanHistory({ selectedClan });
+  const shouldReduceMotion = useReducedMotion();
+  const [stats, setStats] = useState<{ clansTracked: number; changesThisMonth: number } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/stats')
+      .then(r => r.json())
+      .then(d => { if (d.success) setStats(d); })
+      .catch(() => {});
+  }, []);
+
+  // Sync search query to URL
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (clanSearch.trim()) {
+      params.set('q', clanSearch);
+    } else {
+      params.delete('q');
+    }
+    const qs = params.toString();
+    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+  }, [clanSearch]);
 
   const searchClans = useCallback(async () => {
     if (!clanSearch.trim()) { setSearchResults([]); return; }
@@ -101,39 +127,83 @@ export default function Home() {
 
   return (
     <ModernBackground>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* Video Smoke Effect from Bottom */}
+      <VideoSmoke />
+
+      {/* Canvas-Based Spark Particles */}
+      <SparkCanvas />
+
+      <div className="container mx-auto px-4 py-8 max-w-7xl relative z-10" style={{ position: 'relative', zIndex: 10 }}>
         <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
+          initial={shouldReduceMotion ? {} : { y: 20, opacity: 0 }}
+          animate={shouldReduceMotion ? {} : { y: 0, opacity: 1 }}
           transition={{ duration: 0.6 }}
           className="mb-12 text-center"
         >
-          <h1 className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-text-primary to-text-secondary bg-clip-text text-transparent">
-            World of Tanks Clan Watcher
+          <div className="mb-6 flex justify-center">
+            <StatusBadge />
+          </div>
+          <h1 className="text-5xl md:text-6xl font-bold mb-4 leading-tight" style={{ fontFamily: "'Oswald', 'Roboto Condensed', sans-serif", textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+            <span className="text-white">World of Tanks </span>
+            <span className="text-[#FF8C00]">Clan Watcher</span>
           </h1>
-          <p className="text-lg text-text-secondary mb-8 max-w-2xl mx-auto">
-            Monitor clan activity, track member changes, and analyze clan statistics in real-time
+          <p className="text-base text-[#c1c1c1] mb-8 max-w-2xl mx-auto leading-relaxed">
+            Professional clan intelligence and member tracking
           </p>
-          <Button asChild size="lg" className="text-base">
+          <Button
+            asChild
+            size="lg"
+            className="text-base font-bold border border-[rgba(255,255,255,0.2)] bg-gradient-to-b from-[#FF8C00] to-[#CC5500] hover:brightness-120 shadow-[0_4px_15px_rgba(255,140,0,0.3)] hover:shadow-[0_0_20px_#FF8C00] rounded-lg px-8 text-white uppercase transition-all duration-300"
+          >
             <a href="/monitoring">View Dashboard →</a>
           </Button>
+
+          {/* Hero Stats */}
+          <div aria-live="polite" aria-atomic="true" className="flex gap-8 md:gap-16 justify-center mt-12 pt-8 border-t border-[#3f3f46]">
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-[#10b981] to-[#059669] bg-clip-text text-transparent" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {stats ? stats.clansTracked.toLocaleString() : '—'}
+              </div>
+              <div className="text-sm text-[#a1a1aa] uppercase tracking-wide mt-1">Clans Tracked</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-[#10b981] to-[#059669] bg-clip-text text-transparent" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {stats ? stats.changesThisMonth.toLocaleString() : '—'}
+              </div>
+              <div className="text-sm text-[#a1a1aa] uppercase tracking-wide mt-1">Changes This Month</div>
+            </div>
+          </div>
         </motion.div>
 
-        <ClanSearchPanel
-          clanSearch={clanSearch}
-          setClanSearch={setClanSearch}
-          searchResults={searchResults}
-          searchLoading={searchLoading}
-          selectedClan={selectedClan}
-          setSelectedClan={setSelectedClan}
-          onScan={scanClan}
-          onHistory={history.loadClanHistory}
-          loading={loading}
-          historyLoading={history.historyLoading}
-          error={error}
-        />
+        <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8 mb-8 items-start">
+          <ClanSearchPanel
+            clanSearch={clanSearch}
+            setClanSearch={setClanSearch}
+            searchResults={searchResults}
+            searchLoading={searchLoading}
+            selectedClan={selectedClan}
+            setSelectedClan={setSelectedClan}
+            onScan={scanClan}
+            onHistory={history.loadClanHistory}
+            loading={loading}
+            historyLoading={history.historyLoading}
+            error={error}
+          />
 
-        {scanResult && <ScanResultsPanel scanResult={scanResult} />}
+          <RecentChangesPanel
+            recentChanges={recentChanges}
+            lastScannedClan={lastScannedClan}
+            onExport={() => history.exportToCSV(recentChanges)}
+            hasExportData={recentChanges.length > 0 || history.allEvents.length > 0}
+          />
+        </div>
+
+        {/* Features Section */}
+        {!scanResult && !history.showHistory && <FeaturesSection />}
+
+        <div aria-live="polite">
+          {scanResult && <ScanResultsPanel scanResult={scanResult} />}
+        </div>
 
         {history.showHistory && (
           <ClanHistoryPanel
@@ -147,13 +217,6 @@ export default function Home() {
             onClose={() => history.setShowHistory(false)}
           />
         )}
-
-        <RecentChangesPanel
-          recentChanges={recentChanges}
-          lastScannedClan={lastScannedClan}
-          onExport={() => history.exportToCSV(recentChanges)}
-          hasExportData={recentChanges.length > 0 || history.allEvents.length > 0}
-        />
       </div>
     </ModernBackground>
   );

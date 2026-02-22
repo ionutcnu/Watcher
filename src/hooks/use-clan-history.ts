@@ -97,7 +97,7 @@ export function useClanHistory({ selectedClan }: UseClanHistoryOptions) {
                     player: { account_id: accountId, account_name: playerName },
                     timestamp,
                     date: new Date(timestamp * 1000).toISOString().split('T')[0],
-                    time: new Date(timestamp * 1000).toLocaleString(),
+                    time: new Date(timestamp * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
                     role: newRole,
                     group: item.group === 'military_personnel' ? 'Military Personnel' : item.group,
                     description: `Player ${playerName} has been assigned to a new clan position: ${oldRole} → ${newRole}`,
@@ -118,7 +118,7 @@ export function useClanHistory({ selectedClan }: UseClanHistoryOptions) {
                   player: { account_id: accountId, account_name: playerName },
                   timestamp,
                   date: new Date(timestamp * 1000).toISOString().split('T')[0],
-                  time: new Date(timestamp * 1000).toLocaleString(),
+                  time: new Date(timestamp * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
                   role: 'Member',
                   group: item.group === 'military_personnel' ? 'Military Personnel' : item.group,
                   description: type === 'join'

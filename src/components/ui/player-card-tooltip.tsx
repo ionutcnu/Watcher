@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { X } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { getWN8Color, getWN8BgColor, getWN8Label } from '@/lib/wn8-colors';
 import type { TomatoPlayerStats } from '@/types/player-stats';
@@ -13,42 +14,64 @@ interface PlayerCardTooltipProps {
   children: React.ReactNode;
 }
 
-// Simple per-session cache
+// Per-session caches
 const statsCache = new Map<number, TomatoPlayerStats | null>();
+const clanCache = new Map<number, string | null>();
 
 export function PlayerCardTooltip({
   accountId, accountName, clanTag, role, children
 }: PlayerCardTooltipProps) {
   const [stats, setStats] = useState<TomatoPlayerStats | null>(null);
+  // undefined = not fetched yet, null = fetched + clanless, string = clan tag
+  const [liveClan, setLiveClan] = useState<string | null | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
 
-  const fetchStats = useCallback(async () => {
+  useEffect(() => {
+    setStats(null);
+    setLiveClan(undefined);
+    setFetched(false);
+  }, [accountId]);
+
+  const fetchData = useCallback(async () => {
     if (fetched) return;
 
-    // Check cache
+    // Restore from cache if available
     if (statsCache.has(accountId)) {
       setStats(statsCache.get(accountId) ?? null);
+      setLiveClan(clanCache.has(accountId) ? (clanCache.get(accountId) ?? null) : undefined);
       setFetched(true);
       return;
     }
 
     setLoading(true);
     try {
-      const response = await fetch('/api/player-stats', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountIds: [accountId], region: 'eu', days: 1000 })
-      });
+      const [statsRes, clanRes] = await Promise.allSettled([
+        fetch('/api/player-stats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accountIds: [accountId], region: 'eu', days: 1000 }),
+        }),
+        fetch(`/api/player-current-clan?accountId=${accountId}`),
+      ]);
 
-      if (!response.ok) {
-        throw new Error(`API returned ${response.status}`);
+      // Stats
+      if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
+        const result = await statsRes.value.json();
+        const playerStats = result.success ? (result.stats?.[accountId] ?? null) : null;
+        statsCache.set(accountId, playerStats);
+        setStats(playerStats);
+      } else {
+        statsCache.set(accountId, null);
       }
 
-      const result = await response.json();
-      const playerStats = result.success ? (result.stats?.[accountId] ?? null) : null;
-      statsCache.set(accountId, playerStats);
-      setStats(playerStats);
+      // Current clan — null means confirmed clanless, undefined means fetch failed
+      if (clanRes.status === 'fulfilled' && clanRes.value.ok) {
+        const result = await clanRes.value.json();
+        const tag: string | null = result.success ? (result.clan?.tag ?? null) : null;
+        clanCache.set(accountId, tag);
+        setLiveClan(tag);
+      }
     } catch {
       statsCache.set(accountId, null);
     } finally {
@@ -60,10 +83,14 @@ export function PlayerCardTooltip({
   const initials = accountName.slice(0, 2).toUpperCase();
 
   const handleOpenChange = useCallback((open: boolean) => {
-    if (open) {
-      fetchStats();
-    }
-  }, [fetchStats]);
+    if (open) fetchData();
+  }, [fetchData]);
+
+  // What to show in the clan line:
+  // - liveClan is a string → show [TAG]
+  // - liveClan is null (confirmed fetched, no clan) → show NO CLAN badge
+  // - liveClan is undefined (not fetched yet) → fall back to prop
+  const clanDisplay = liveClan !== undefined ? liveClan : (clanTag ?? undefined);
 
   return (
     <Tooltip onOpenChange={handleOpenChange}>
@@ -84,7 +111,14 @@ export function PlayerCardTooltip({
             </div>
             <div>
               <div className="font-bold text-sm text-text-primary">{accountName}</div>
-              {clanTag && <div className="text-[11px] text-text-secondary">[{clanTag}]</div>}
+              {clanDisplay ? (
+                <div className="text-[11px] text-text-secondary">[{clanDisplay}]</div>
+              ) : liveClan === null ? (
+                <div className="flex items-center gap-1 text-[11px] text-danger/70 mt-0.5">
+                  <X className="w-3 h-3" />
+                  <span className="uppercase tracking-wider font-semibold">No Clan</span>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

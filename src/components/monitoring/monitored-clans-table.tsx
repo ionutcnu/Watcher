@@ -1,6 +1,7 @@
 'use client';
 
 import { Eye } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { MonitoredClan } from '@/types/monitoring';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -28,6 +29,17 @@ export function MonitoredClansTable({
   onToggleEnabled, onRemove,
   onBulkEnable, onBulkDisable, onBulkRemove, bulkActionLoading
 }: MonitoredClansTableProps) {
+  const [emblems, setEmblems] = useState<Record<number, string | null>>({});
+
+  useEffect(() => {
+    if (clans.length === 0) return;
+    const ids = clans.map(c => c.clan_id).join(',');
+    fetch(`/api/clan-emblem?clan_ids=${ids}`)
+      .then(r => r.json())
+      .then(d => { if (d.success) setEmblems(d.emblems); })
+      .catch(() => {});
+  }, [clans]);
+
   return (
     <div className="bg-surface rounded-lg shadow-md p-6 mb-8 border border-border">
       <div
@@ -90,8 +102,30 @@ export function MonitoredClansTable({
                             className="w-4 h-4 rounded border-border bg-surface text-accent-primary focus:ring-accent-primary" />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-text-primary">[{clan.tag}] {clan.name}</div>
-                          <div className="text-sm text-text-secondary">ID: {clan.clan_id}</div>
+                          <div className="flex items-center gap-3">
+                            {emblems[clan.clan_id] ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={emblems[clan.clan_id]!}
+                                alt={`[${clan.tag}] emblem`}
+                                width={32}
+                                height={32}
+                                className="rounded shrink-0"
+                                style={{ imageRendering: 'pixelated' }}
+                              />
+                            ) : (
+                              <div
+                                className="w-8 h-8 rounded shrink-0 flex items-center justify-center text-[10px] font-bold"
+                                style={{ background: '#1c1812', border: '1px solid #3a3020', color: '#CC8800' }}
+                              >
+                                {clan.tag.slice(0, 2)}
+                              </div>
+                            )}
+                            <div>
+                              <div className="text-sm font-medium text-text-primary">[{clan.tag}] {clan.name}</div>
+                              <div className="text-sm text-text-secondary">ID: {clan.clan_id}</div>
+                            </div>
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           {clanRatings?.[clan.clan_id] != null && !isNaN(clanRatings[clan.clan_id]!) ? (

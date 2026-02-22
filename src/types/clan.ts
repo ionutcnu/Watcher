@@ -25,6 +25,16 @@ export interface ClanChange {
   };
   timestamp: number;
   date: string;
+  /** For leave events: the next clan the player joined (within monitored clans) */
+  destination?: {
+    tag: string;
+    name: string;
+  };
+  /** For join events: the clan the player came from (within monitored clans) */
+  source?: {
+    tag: string;
+    name: string;
+  };
 }
 
 export interface ClanSnapshot {
