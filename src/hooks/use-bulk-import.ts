@@ -40,7 +40,10 @@ export function useBulkImport(onComplete?: () => void) {
       for (let i = 0; i < jsonData.length; i++) {
         const row = jsonData[i];
         if (Array.isArray(row) && row[1]) {
-          const value = String(row[1]).trim();
+          const rawCell = row[1];
+          const value = (rawCell && typeof rawCell === 'object' && 'text' in rawCell)
+            ? String((rawCell as { text: string }).text).trim()
+            : String(rawCell ?? '').trim();
           if (value && !value.toLowerCase().match(/^(clan|tag|name|guild)s?$/)) {
             clanTags.push(value);
           }

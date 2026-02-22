@@ -55,7 +55,7 @@ export function RecentChangesPanel({ recentChanges, lastScannedClan, onExport, h
           <ul className="list-none m-0 p-0">
             {displayChanges.slice(0, 5).map((change, index) => (
               <motion.li
-                key={index}
+                key={`${change.player.account_id}-${change.timestamp}-${change.type}`}
                 initial={shouldReduceMotion ? {} : { opacity: 0 }}
                 animate={shouldReduceMotion ? {} : { opacity: 1 }}
                 transition={{ delay: index * 0.04 }}

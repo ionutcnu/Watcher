@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
     const url = new URL(request.url);
     const raw = url.searchParams.get('accountIds') ?? '';
-    const accountIds = raw.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0);
+    const accountIds = [...new Set(raw.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0))];
 
     if (accountIds.length === 0) return badRequest('accountIds required');
     if (accountIds.length > 100) return badRequest('Max 100 accountIds');

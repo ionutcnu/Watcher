@@ -21,7 +21,7 @@ const TOTAL_SEGS = 20;
 
 export function ManualCheckProgress({ message, percent, details }: ManualCheckProgressProps) {
   const shouldReduceMotion = useReducedMotion();
-  const filledSegs = Math.round((percent / 100) * TOTAL_SEGS);
+  const filledSegs = Math.round((Math.min(100, Math.max(0, percent)) / 100) * TOTAL_SEGS);
 
   return (
     <div

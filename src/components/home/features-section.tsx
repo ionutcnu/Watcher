@@ -3,28 +3,29 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { Target, ScrollText, BarChart3 } from 'lucide-react';
 
+const features = [
+  {
+    icon: Target,
+    title: 'Real-Time Monitoring',
+    description: 'Automatic hourly scans for up to 50 clans. Get instant notifications via Discord when members join or leave.',
+    comingSoon: true,
+  },
+  {
+    icon: ScrollText,
+    title: 'Complete History',
+    description: 'Access full member movement history. Track recruitment patterns and identify active periods.',
+    comingSoon: false,
+  },
+  {
+    icon: BarChart3,
+    title: 'Advanced Analytics',
+    description: 'Export data to CSV, view statistics, and analyze clan growth trends over time.',
+    comingSoon: false,
+  },
+];
+
 export function FeaturesSection() {
   const shouldReduceMotion = useReducedMotion();
-  const features = [
-    {
-      icon: Target,
-      title: 'Real-Time Monitoring',
-      description: 'Automatic hourly scans for up to 50 clans. Get instant notifications via Discord when members join or leave.',
-      comingSoon: true,
-    },
-    {
-      icon: ScrollText,
-      title: 'Complete History',
-      description: 'Access full member movement history. Track recruitment patterns and identify active periods.',
-      comingSoon: false,
-    },
-    {
-      icon: BarChart3,
-      title: 'Advanced Analytics',
-      description: 'Export data to CSV, view statistics, and analyze clan growth trends over time.',
-      comingSoon: false,
-    },
-  ];
 
   return (
     <div className="mt-16">

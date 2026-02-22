@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { getWN8Color, getWN8BgColor, getWN8Label } from '@/lib/wn8-colors';
@@ -26,6 +26,12 @@ export function PlayerCardTooltip({
   const [liveClan, setLiveClan] = useState<string | null | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
+
+  useEffect(() => {
+    setStats(null);
+    setLiveClan(undefined);
+    setFetched(false);
+  }, [accountId]);
 
   const fetchData = useCallback(async () => {
     if (fetched) return;

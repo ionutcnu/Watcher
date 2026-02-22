@@ -20,6 +20,7 @@ export function VideoSmoke({ videoSrc = '/smoke.mp4' }: VideoSmokeProps) {
           loop
           muted
           playsInline
+          preload="none"
           className="absolute bottom-0 left-0 w-full h-full object-cover opacity-30"
           style={{
             mixBlendMode: 'screen',

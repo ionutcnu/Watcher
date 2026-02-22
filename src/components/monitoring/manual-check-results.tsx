@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { ManualCheckResults, ClanCheckResult } from '@/hooks/use-manual-check';
 import { getWN8Color } from '@/lib/wn8-colors';
 import { StatCard } from '@/components/ui/stat-card';
@@ -20,28 +20,32 @@ export function ManualCheckResultsView({
   // Hooks must be at the top — before any conditional returns
   const [currentClans, setCurrentClans] = useState<Record<number, string | null>>({});
 
+  const leaverKey = (results.results ?? [])
+    .flatMap(r => (r.leavers ?? []).map(l => l.player.account_id))
+    .join(',');
+
+  // Build cross-clan source map: player_id → clan they came from
+  const playerSources = useMemo(() => {
+    const map: Record<number, { tag: string; name: string }> = {};
+    if (results.results) {
+      for (const r of results.results) {
+        for (const leaver of r.leavers || []) {
+          map[leaver.player.account_id] = { tag: r.clan_tag, name: r.clan_name };
+        }
+      }
+    }
+    return map;
+  }, [results.results]);
+
   useEffect(() => {
-    if (!results.success) return;
-    const allLeaverIds = (results.results ?? [])
-      .flatMap(r => (r.leavers ?? []).map(l => l.player.account_id));
-    if (allLeaverIds.length === 0) return;
-    fetch(`/api/player-current-clans?accountIds=${allLeaverIds.join(',')}`)
+    if (!results.success || !leaverKey) return;
+    fetch(`/api/player-current-clans?accountIds=${leaverKey}`)
       .then(r => r.json())
       .then(data => { if (data.success) setCurrentClans(data.clans); })
       .catch(() => {});
-  }, [results.success, results.results]);
+  }, [results.success, leaverKey]);
 
   if (!results.success) return null;
-
-  // Build cross-clan source map: player_id → clan they came from
-  const playerSources: Record<number, { tag: string; name: string }> = {};
-  if (results.results) {
-    for (const r of results.results) {
-      for (const leaver of r.leavers || []) {
-        playerSources[leaver.player.account_id] = { tag: r.clan_tag, name: r.clan_name };
-      }
-    }
-  }
 
   return (
     <div className="bg-surface rounded-lg shadow-md p-6 mb-8 border border-border">

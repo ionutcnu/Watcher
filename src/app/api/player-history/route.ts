@@ -17,9 +17,13 @@ async function fetchTomatoGgHistory(accountId: number): Promise<HistoryEvent[]> 
     `https://api.tomato.gg/api/player/clan-history-unofficial/EU/${accountId}`,
     { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8000) }
   );
-  if (!res.ok) throw new Error(`tomato.gg returned ${res.status}`);
+  if (!res.ok) {
+    console.error('[player-history] tomato.gg error:', res.status, res.statusText);
+    throw new Error(`tomato.gg returned ${res.status}`);
+  }
   const data = await res.json();
   if (data.meta?.status !== 'good' || !Array.isArray(data.data)) {
+    console.error('[player-history] tomato.gg error: invalid response', data.meta);
     throw new Error('Invalid tomato.gg response');
   }
 

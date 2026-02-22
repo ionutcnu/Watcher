@@ -229,6 +229,9 @@ export function PlayerJourneyTimeline() {
         >
           <motion.div
             key="panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Clan history for ${player.name}`}
             initial={{ opacity: 0, scale: 0.97, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 16 }}
