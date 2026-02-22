@@ -104,16 +104,46 @@ export async function saveChanges(db: D1Database, changes: ClanChange[]): Promis
   await db.batch(statements);
 }
 
+export async function getPlayerHistory(db: D1Database, playerId: number): Promise<Array<{
+  type: 'join' | 'leave';
+  clan_tag: string;
+  clan_name: string;
+  timestamp: number;
+  date: string;
+}>> {
+  const stmt = db.prepare(
+    `SELECT type, clan_tag, clan_name, timestamp, date
+     FROM changes
+     WHERE player_id = ?
+     ORDER BY timestamp ASC`
+  ).bind(playerId);
+
+  const result = await stmt.all<{
+    type: 'join' | 'leave';
+    clan_tag: string;
+    clan_name: string;
+    timestamp: number;
+    date: string;
+  }>();
+
+  return result.results || [];
+}
+
 export async function getRecentChanges(db: D1Database, days: number = 7): Promise<ClanChange[]> {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - days);
   const cutoffTimestamp = cutoffDate.getTime();
 
   const stmt = db.prepare(
-    `SELECT type, player_id, player_name, clan_id, clan_tag, clan_name, timestamp, date
-     FROM changes
-     WHERE timestamp >= ?
-     ORDER BY timestamp DESC`
+    `SELECT
+       c.type, c.player_id, c.player_name, c.clan_id, c.clan_tag, c.clan_name, c.timestamp, c.date,
+       (SELECT d.clan_tag FROM changes d WHERE d.type = 'join' AND d.player_id = c.player_id AND d.timestamp > c.timestamp ORDER BY d.timestamp ASC LIMIT 1) AS dest_tag,
+       (SELECT d.clan_name FROM changes d WHERE d.type = 'join' AND d.player_id = c.player_id AND d.timestamp > c.timestamp ORDER BY d.timestamp ASC LIMIT 1) AS dest_name,
+       (SELECT d.clan_tag FROM changes d WHERE d.type = 'leave' AND d.player_id = c.player_id AND d.timestamp < c.timestamp ORDER BY d.timestamp DESC LIMIT 1) AS src_tag,
+       (SELECT d.clan_name FROM changes d WHERE d.type = 'leave' AND d.player_id = c.player_id AND d.timestamp < c.timestamp ORDER BY d.timestamp DESC LIMIT 1) AS src_name
+     FROM changes c
+     WHERE c.timestamp >= ?
+     ORDER BY c.timestamp DESC`
   ).bind(cutoffTimestamp);
 
   const result = await stmt.all<{
@@ -125,6 +155,10 @@ export async function getRecentChanges(db: D1Database, days: number = 7): Promis
     clan_name: string;
     timestamp: number;
     date: string;
+    dest_tag: string | null;
+    dest_name: string | null;
+    src_tag: string | null;
+    src_name: string | null;
   }>();
 
   if (!result.results) {
@@ -143,6 +177,12 @@ export async function getRecentChanges(db: D1Database, days: number = 7): Promis
       name: row.clan_name
     },
     timestamp: row.timestamp,
-    date: row.date
+    date: row.date,
+    ...(row.type === 'leave' && row.dest_tag
+      ? { destination: { tag: row.dest_tag, name: row.dest_name ?? '' } }
+      : {}),
+    ...(row.type === 'join' && row.src_tag
+      ? { source: { tag: row.src_tag, name: row.src_name ?? '' } }
+      : {}),
   }));
 }

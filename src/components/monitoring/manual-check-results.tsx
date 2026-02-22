@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import type { ManualCheckResults, ClanCheckResult } from '@/hooks/use-manual-check';
 import { getWN8Color } from '@/lib/wn8-colors';
 import { StatCard } from '@/components/ui/stat-card';
@@ -16,7 +17,31 @@ interface ManualCheckResultsViewProps {
 export function ManualCheckResultsView({
   results, expandedResults, statsLoading, onToggleExpanded, onClose
 }: ManualCheckResultsViewProps) {
+  // Hooks must be at the top — before any conditional returns
+  const [currentClans, setCurrentClans] = useState<Record<number, string | null>>({});
+
+  useEffect(() => {
+    if (!results.success) return;
+    const allLeaverIds = (results.results ?? [])
+      .flatMap(r => (r.leavers ?? []).map(l => l.player.account_id));
+    if (allLeaverIds.length === 0) return;
+    fetch(`/api/player-current-clans?accountIds=${allLeaverIds.join(',')}`)
+      .then(r => r.json())
+      .then(data => { if (data.success) setCurrentClans(data.clans); })
+      .catch(() => {});
+  }, [results.success, results.results]);
+
   if (!results.success) return null;
+
+  // Build cross-clan source map: player_id → clan they came from
+  const playerSources: Record<number, { tag: string; name: string }> = {};
+  if (results.results) {
+    for (const r of results.results) {
+      for (const leaver of r.leavers || []) {
+        playerSources[leaver.player.account_id] = { tag: r.clan_tag, name: r.clan_name };
+      }
+    }
+  }
 
   return (
     <div className="bg-surface rounded-lg shadow-md p-6 mb-8 border border-border">
@@ -37,6 +62,8 @@ export function ManualCheckResultsView({
             <ClanResultCard
               key={clanResult.clan_id}
               clanResult={clanResult}
+              currentClans={currentClans}
+              playerSources={playerSources}
               isExpanded={expandedResults[clanResult.clan_id] ?? false}
               isStatsLoading={statsLoading[clanResult.clan_id] ?? false}
               onToggle={() => onToggleExpanded(clanResult.clan_id)}
@@ -49,9 +76,11 @@ export function ManualCheckResultsView({
 }
 
 function ClanResultCard({
-  clanResult, isExpanded, isStatsLoading, onToggle
+  clanResult, currentClans, playerSources, isExpanded, isStatsLoading, onToggle
 }: {
   clanResult: ClanCheckResult;
+  currentClans: Record<number, string | null>;
+  playerSources: Record<number, { tag: string; name: string }>;
   isExpanded: boolean;
   isStatsLoading: boolean;
   onToggle: () => void;
@@ -95,17 +124,27 @@ function ClanResultCard({
               <BattleReport
                 clanTag={clanResult.clan_tag}
                 clanName={clanResult.clan_name}
-                joined={(clanResult.joiners || []).map(j => ({
-                  account_id: j.player.account_id,
-                  account_name: j.player.account_name,
-                  stats: j.stats,
-                }))}
+                joined={(clanResult.joiners || []).map(j => {
+                  const src = playerSources[j.player.account_id];
+                  return {
+                    account_id: j.player.account_id,
+                    account_name: j.player.account_name,
+                    date: j.date,
+                    time: j.time,
+                    sourceTag: src?.tag,
+                    sourceName: src?.name,
+                    stats: j.stats,
+                  };
+                })}
                 left={(clanResult.leavers || []).map(l => ({
                   account_id: l.player.account_id,
                   account_name: l.player.account_name,
+                  date: l.date,
+                  time: l.time,
                   stats: l.stats,
                 }))}
                 isStatsLoading={isStatsLoading}
+                currentClans={currentClans}
               />
 
               {/* Detailed stats table (expandable) */}

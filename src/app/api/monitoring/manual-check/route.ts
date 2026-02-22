@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
                         player: { account_id: accountId, account_name: playerName },
                         timestamp,
                         date: new Date(timestamp * 1000).toISOString().split('T')[0],
-                        time: new Date(timestamp * 1000).toLocaleString(),
+                        time: new Date(timestamp * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
                         description: `Player ${playerName} has been excluded from this clan.`,
                         stats: null
                       });
@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
                         player: { account_id: accountId, account_name: playerName },
                         timestamp,
                         date: new Date(timestamp * 1000).toISOString().split('T')[0],
-                        time: new Date(timestamp * 1000).toLocaleString(),
+                        time: new Date(timestamp * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
                         description: `Player ${playerName} has joined this clan.`,
                         stats: null
                       });

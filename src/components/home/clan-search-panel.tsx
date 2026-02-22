@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TacticalLoader } from '@/components/ui/tactical-loader';
 import { EmptyState } from '@/components/ui/empty-state';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 
 interface ClanSearchPanelProps {
   clanSearch: string;
@@ -28,8 +28,9 @@ export function ClanSearchPanel({
   selectedClan, setSelectedClan, onScan, onHistory,
   loading, historyLoading, error
 }: ClanSearchPanelProps) {
+  const shouldReduceMotion = useReducedMotion();
   return (
-    <Card variant="primary" className="mb-8">
+    <Card variant="bracket" className="mb-8 overflow-visible">
       <CardHeader>
         <CardTitle>Search & Scan Clan</CardTitle>
       </CardHeader>
@@ -39,6 +40,8 @@ export function ClanSearchPanel({
           <Input
             id="clan-search"
             type="text"
+            name="clan-search"
+            autoComplete="off"
             value={clanSearch}
             onChange={(e) => setClanSearch(e.target.value)}
             placeholder="Enter clan name or tag (e.g., HAVOK, -G-)"
@@ -60,15 +63,18 @@ export function ClanSearchPanel({
         )}
 
         {searchResults.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-4">
             <Label>Search Results</Label>
             <div className="max-h-64 overflow-y-auto overflow-x-hidden space-y-2">
               {searchResults.map((clan) => (
                 <motion.div
                   key={clan.clan_id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedClan(clan)}
-                  whileHover={{ scale: 1.01 }}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedClan(clan); } }}
+                  whileHover={shouldReduceMotion ? undefined : { scale: 1.01 }}
+                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary ${
                     selectedClan?.clan_id === clan.clan_id
                       ? 'border-accent-primary bg-accent-primary/10'
                       : 'border-border hover:border-accent-primary/50 bg-surface'
@@ -83,31 +89,19 @@ export function ClanSearchPanel({
                 </motion.div>
               ))}
             </div>
+
+            {selectedClan && (
+              <div className="flex gap-2 pt-2">
+                <Button onClick={onScan} disabled={loading} size="lg" className="flex-1">
+                  {loading ? 'Scanning...' : 'Scan Now'}
+                </Button>
+                <Button onClick={onHistory} disabled={historyLoading} variant="secondary" size="lg" className="flex-1">
+                  {historyLoading ? 'Loading...' : 'History'}
+                </Button>
+              </div>
+            )}
           </div>
         )}
-
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 space-y-2">
-            <Label>Selected Clan</Label>
-            <div className="px-4 py-3 bg-surface rounded-md border border-border min-h-[46px] flex items-center">
-              {selectedClan ? (
-                <span className="text-text-primary">
-                  [{selectedClan.tag}] {selectedClan.name}
-                </span>
-              ) : (
-                <span className="text-text-tertiary">No clan selected</span>
-              )}
-            </div>
-          </div>
-          <div className="flex gap-2 items-end">
-            <Button onClick={onScan} disabled={loading || !selectedClan} size="lg">
-              {loading ? 'Scanning...' : 'Scan Now'}
-            </Button>
-            <Button onClick={onHistory} disabled={historyLoading || !selectedClan} variant="secondary" size="lg">
-              {historyLoading ? 'Loading...' : 'History'}
-            </Button>
-          </div>
-        </div>
 
         {error && (
           <div className="p-4 bg-danger/10 border border-danger rounded-md">

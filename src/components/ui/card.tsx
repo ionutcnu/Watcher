@@ -12,6 +12,8 @@ const cardVariants = cva(
         elevated: "bg-surface-elevated text-card-foreground border-border shadow-md",
         primary: "bg-card text-card-foreground border-accent-primary/20 shadow-[0_0_16px_rgba(59,130,246,0.05)]",
         ghost: "bg-transparent text-card-foreground border-transparent shadow-none",
+        camo: "relative bg-gradient-to-br from-[#27272a] to-[#18181b] text-card-foreground border-2 border-[#3f3f46] shadow-[0_4px_20px_rgba(255,140,0,0.1)] before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-gradient-to-r before:from-[#FF8C00] before:via-[#CC5500] before:to-[#FF8C00] before:content-['']",
+        bracket: "relative overflow-visible rounded-none bg-[#0d0b09] text-card-foreground border border-[#2a2418]",
       },
     },
     defaultVariants: {
@@ -23,6 +25,7 @@ const cardVariants = cva(
 function Card({
   className,
   variant,
+  children,
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof cardVariants>) {
   return (
@@ -30,7 +33,17 @@ function Card({
       data-slot="card"
       className={cn(cardVariants({ variant }), className)}
       {...props}
-    />
+    >
+      {variant === 'bracket' && (
+        <>
+          <span aria-hidden="true" className="pointer-events-none absolute top-[-1px] left-[-1px] w-[13px] h-[13px] border-t-2 border-l-2 border-[#CC8800] z-10" />
+          <span aria-hidden="true" className="pointer-events-none absolute top-[-1px] right-[-1px] w-[13px] h-[13px] border-t-2 border-r-2 border-[#CC8800] z-10" />
+          <span aria-hidden="true" className="pointer-events-none absolute bottom-[-1px] left-[-1px] w-[13px] h-[13px] border-b-2 border-l-2 border-[#CC8800] z-10" />
+          <span aria-hidden="true" className="pointer-events-none absolute bottom-[-1px] right-[-1px] w-[13px] h-[13px] border-b-2 border-r-2 border-[#CC8800] z-10" />
+        </>
+      )}
+      {children}
+    </div>
   )
 }
 
@@ -47,9 +60,9 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+function CardTitle({ className, ...props }: React.ComponentProps<"h3">) {
   return (
-    <div
+    <h3
       data-slot="card-title"
       className={cn("leading-none font-semibold", className)}
       {...props}

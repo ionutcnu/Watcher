@@ -2,7 +2,6 @@
 
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
 
 export interface BulkImportResults {
   total: number;
@@ -31,16 +30,17 @@ export function useBulkImport(onComplete?: () => void) {
       setResults(null);
 
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json<(string | number | boolean)[]>(worksheet, { header: 1 });
+      const ExcelJS = (await import('exceljs')).default;
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(data);
+      const worksheet = workbook.worksheets[0];
+      const jsonData = worksheet.getSheetValues() as (string | number | boolean | null)[][];
 
       const clanTags: string[] = [];
       for (let i = 0; i < jsonData.length; i++) {
         const row = jsonData[i];
-        if (Array.isArray(row) && row[0]) {
-          const value = String(row[0]).trim();
+        if (Array.isArray(row) && row[1]) {
+          const value = String(row[1]).trim();
           if (value && !value.toLowerCase().match(/^(clan|tag|name|guild)s?$/)) {
             clanTags.push(value);
           }
